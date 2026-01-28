@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>objkt.com → Bluesky Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00FF87;
+            --secondary: #8B5CF6;
+            --background: #0A0A0A;
+            --foreground: #FFFFFF;
+            --card: #141414;
+            --border: #2A2A2A;
+            --muted: #1A1A1A;
+            --destructive: #FF3366;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
+            line-height: 1.6;
+        }
+
+        header {
+            border-bottom: 4px solid var(--primary);
+            background-color: var(--background);
+            padding: 2rem 0;
+            margin-bottom: 3rem;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #A0A0A0;
+            font-size: 1rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid var(--primary);
+            background-color: var(--primary);
+            color: var(--background);
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 rgba(0, 255, 135, 0.3);
+        }
+
+        button.secondary {
+            background-color: transparent;
+            color: var(--primary);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .card {
+            background-color: var(--card);
+            border: 4px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 8px 8px 0 rgba(0, 255, 135, 0.1);
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+            box-shadow: 8px 8px 0 rgba(0, 255, 135, 0.3);
+        }
+
+        .card h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 1rem 0;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #A0A0A0;
+        }
+
+        .chart-container {
+            background-color: var(--card);
+            border: 4px solid var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 8px 8px 0 rgba(0, 255, 135, 0.1);
+            position: relative;
+            height: 400px;
+        }
+
+        .chart-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            color: var(--foreground);
+        }
+
+        canvas {
+            max-height: 350px;
+        }
+
+        .table-container {
+            background-color: var(--card);
+            border: 4px solid var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 8px 8px 0 rgba(0, 255, 135, 0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background-color: var(--muted);
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 2px solid var(--border);
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover {
+            background-color: var(--muted);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background-color: rgba(0, 255, 135, 0.2);
+            color: var(--primary);
+        }
+
+        .badge.pending {
+            background-color: rgba(139, 92, 246, 0.2);
+            color: var(--secondary);
+        }
+
+        .badge.error {
+            background-color: rgba(255, 51, 102, 0.2);
+            color: var(--destructive);
+        }
+
+        footer {
+            border-top: 4px solid var(--primary);
+            padding: 2rem 0;
+            margin-top: 4rem;
+            text-align: center;
+            color: #A0A0A0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--card);
+            border: 4px solid var(--primary);
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-close {
+            float: right;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #A0A0A0;
+        }
+
+        .empty-state h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: var(--foreground);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1rem;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            table {
+                font-size: 0.9rem;
+            }
+
+            th, td {
+                padding: 0.75rem 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>📊 objkt → Bluesky Dashboard</h1>
+            <p class="subtitle">Visualize e analise os resultados das suas postagens automáticas</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="controls">
+            <button onclick="generateReport()">📥 Baixar Relatório PDF</button>
+            <button class="secondary" onclick="shareData()">📤 Compartilhar Dados</button>
+            <button class="secondary" onclick="resetData()">🔄 Resetar Dados</button>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="grid">
+            <div class="card">
+                <h3>Total de Postagens</h3>
+                <div class="stat-value" id="totalPosts">0</div>
+                <p class="stat-label">Posts enviados com sucesso</p>
+            </div>
+
+            <div class="card">
+                <h3>Taxa de Sucesso</h3>
+                <div class="stat-value" id="successRate">0%</div>
+                <p class="stat-label">Postagens bem-sucedidas</p>
+            </div>
+
+            <div class="card">
+                <h3>Artes Únicas</h3>
+                <div class="stat-value" id="uniqueArts">0</div>
+                <p class="stat-label">Diferentes obras postadas</p>
+            </div>
+
+            <div class="card">
+                <h3>Valor Total em XTZ</h3>
+                <div class="stat-value" id="totalValue">0</div>
+                <p class="stat-label">Valor combinado das artes</p>
+            </div>
+
+            <div class="card">
+                <h3>Última Postagem</h3>
+                <div class="stat-value" id="lastPost" style="font-size: 1.2rem;">-</div>
+                <p class="stat-label">Data e hora</p>
+            </div>
+
+            <div class="card">
+                <h3>Próxima Postagem</h3>
+                <div class="stat-value" id="nextPost" style="font-size: 1.2rem;">-</div>
+                <p class="stat-label">Agendada para</p>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="chart-container">
+            <div class="chart-title">📈 Postagens por Dia</div>
+            <canvas id="postsPerDayChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">🎨 Artes Mais Postadas</div>
+            <canvas id="topArtsChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">⏰ Horários de Pico</div>
+            <canvas id="peakHoursChart"></canvas>
+        </div>
+
+        <!-- Recent Posts Table -->
+        <div class="table-container">
+            <div class="chart-title">📋 Postagens Recentes</div>
+            <table id="recentPostsTable">
+                <thead>
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Arte</th>
+                        <th>Preço (XTZ)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="recentPostsBody">
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <p>Nenhuma postagem registrada ainda. Ative o bot para começar!</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <footer>
+        <p>Dashboard de Monitoramento - objkt.com → Bluesky Bot</p>
+        <p style="font-size: 0.9rem; margin-top: 0.5rem;">Dados armazenados localmente no seu navegador</p>
+    </footer>
+
+    <!-- Modal para compartilhamento -->
+    <div id="shareModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h2 style="margin-bottom: 1rem; color: var(--primary);">Compartilhar Dados</h2>
+            <p style="margin-bottom: 1rem; color: #A0A0A0;">Copie o link abaixo para compartilhar seus dados:</p>
+            <textarea id="shareLink" style="width: 100%; height: 100px; padding: 0.5rem; background-color: var(--muted); border: 2px solid var(--border); color: var(--foreground); border-radius: 4px; font-family: monospace; font-size: 0.9rem;" readonly></textarea>
+            <button onclick="copyToClipboard()" style="width: 100%; margin-top: 1rem;">📋 Copiar para Clipboard</button>
+        </div>
+    </div>
+
+    <script>
+        // Mock data - Em produção, isso viria do localStorage ou API
+        const mockData = {
+            posts: [
+                { date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), art: 'Digital Dreams #42', price: 15.5, status: 'success' },
+                { date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), art: 'Crypto Canvas #128', price: 22.0, status: 'success' },
+                { date: new Date(Date.now() - 12 * 60 * 60 * 1000), art: 'NFT Vision #89', price: 8.75, status: 'success' },
+                { date: new Date(Date.now() - 6 * 60 * 60 * 1000), art: 'Digital Dreams #42', price: 15.5, status: 'success' },
+                { date: new Date(Date.now() - 2 * 60 * 60 * 1000), art: 'Pixel Art #256', price: 12.0, status: 'success' },
+            ]
+        };
+
+        function loadData() {
+            const stored = localStorage.getItem('botPostsData');
+            return stored ? JSON.parse(stored) : mockData;
+        }
+
+        function saveData(data) {
+            localStorage.setItem('botPostsData', JSON.stringify(data));
+        }
+
+        function updateStatistics() {
+            const data = loadData();
+            const posts = data.posts || [];
+
+            // Total posts
+            document.getElementById('totalPosts').textContent = posts.length;
+
+            // Success rate
+            const successful = posts.filter(p => p.status === 'success').length;
+            const successRate = posts.length > 0 ? Math.round((successful / posts.length) * 100) : 0;
+            document.getElementById('successRate').textContent = successRate + '%';
+
+            // Unique arts
+            const uniqueArts = new Set(posts.map(p => p.art)).size;
+            document.getElementById('uniqueArts').textContent = uniqueArts;
+
+            // Total value
+            const totalValue = posts.reduce((sum, p) => sum + (p.price || 0), 0);
+            document.getElementById('totalValue').textContent = totalValue.toFixed(2) + ' XTZ';
+
+            // Last post
+            if (posts.length > 0) {
+                const lastPostDate = new Date(posts[0].date);
+                document.getElementById('lastPost').textContent = lastPostDate.toLocaleDateString('pt-BR', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
+            // Next post (simulated)
+            const nextPostDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            document.getElementById('nextPost').textContent = nextPostDate.toLocaleDateString('pt-BR', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function updateCharts() {
+            const data = loadData();
+            const posts = data.posts || [];
+
+            // Posts per day
+            const postsPerDay = {};
+            posts.forEach(p => {
+                const date = new Date(p.date).toLocaleDateString('pt-BR');
+                postsPerDay[date] = (postsPerDay[date] || 0) + 1;
+            });
+
+            const ctx1 = document.getElementById('postsPerDayChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(postsPerDay),
+                    datasets: [{
+                        label: 'Postagens',
+                        data: Object.values(postsPerDay),
+                        borderColor: '#00FF87',
+                        backgroundColor: 'rgba(0, 255, 135, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#00FF87',
+                        pointBorderColor: '#0A0A0A',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#FFFFFF' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: { color: '#A0A0A0' },
+                            grid: { color: '#2A2A2A' }
+                        },
+                        x: {
+                            ticks: { color: '#A0A0A0' },
+                            grid: { color: '#2A2A2A' }
+                        }
+                    }
+                }
+            });
+
+            // Top arts
+            const artCounts = {};
+            posts.forEach(p => {
+                artCounts[p.art] = (artCounts[p.art] || 0) + 1;
+            });
+
+            const topArts = Object.entries(artCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            const ctx2 = document.getElementById('topArtsChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: topArts.map(a => a[0].substring(0, 20) + '...'),
+                    datasets: [{
+                        label: 'Vezes Postada',
+                        data: topArts.map(a => a[1]),
+                        backgroundColor: '#8B5CF6',
+                        borderColor: '#00FF87',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#FFFFFF' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: { color: '#A0A0A0' },
+                            grid: { color: '#2A2A2A' }
+                        },
+                        x: {
+                            ticks: { color: '#A0A0A0' },
+                            grid: { color: '#2A2A2A' }
+                        }
+                    }
+                }
+            });
+
+            // Peak hours
+            const peakHours = {};
+            for (let i = 0; i < 24; i++) {
+                peakHours[i] = 0;
+            }
+            posts.forEach(p => {
+                const hour = new Date(p.date).getHours();
+                peakHours[hour]++;
+            });
+
+            const ctx3 = document.getElementById('peakHoursChart').getContext('2d');
+            new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => i + ':00'),
+                    datasets: [{
+                        label: 'Postagens',
+                        data: Object.values(peakHours),
+                        backgroundColor: '#00FF87',
+                        borderColor: '#8B5CF6',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#FFFFFF' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: { color: '#A0A0A0' },
+                            grid: { color: '#2A2A2A' }
+                        },
+                        x: {
+                            ticks: { color: '#A0A0A0' },
+                            grid: { color: '#2A2A2A' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateRecentPosts() {
+            const data = loadData();
+            const posts = data.posts || [];
+            const tbody = document.getElementById('recentPostsBody');
+
+            if (posts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><p>Nenhuma postagem registrada ainda.</p></td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = posts.map(p => `
+                <tr>
+                    <td>${new Date(p.date).toLocaleString('pt-BR')}</td>
+                    <td>${p.art}</td>
+                    <td>${p.price} XTZ</td>
+                    <td><span class="badge ${p.status}">${p.status === 'success' ? '✓ Sucesso' : '⏳ Pendente'}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        function generateReport() {
+            const element = document.body;
+            html2canvas(element, {
+                backgroundColor: '#0A0A0A',
+                scale: 2
+            }).then(canvas => {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 210;
+                const pageHeight = 297;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                pdf.save('objkt-bluesky-dashboard.pdf');
+            });
+        }
+
+        function shareData() {
+            const data = loadData();
+            const encoded = btoa(JSON.stringify(data));
+            const link = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
+            
+            document.getElementById('shareLink').value = link;
+            document.getElementById('shareModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('shareModal').classList.remove('active');
+        }
+
+        function copyToClipboard() {
+            const textarea = document.getElementById('shareLink');
+            textarea.select();
+            document.execCommand('copy');
+            alert('Link copiado para clipboard!');
+        }
+
+        function resetData() {
+            if (confirm('Tem certeza que deseja resetar todos os dados?')) {
+                localStorage.removeItem('botPostsData');
+                location.reload();
+            }
+        }
+
+        // Load data from URL if shared
+        function loadSharedData() {
+            const params = new URLSearchParams(window.location.search);
+            const encodedData = params.get('data');
+            if (encodedData) {
+                try {
+                    const data = JSON.parse(atob(encodedData));
+                    saveData(data);
+                } catch (e) {
+                    console.error('Erro ao carregar dados compartilhados:', e);
+                }
+            }
+        }
+
+        // Initialize
+        loadSharedData();
+        updateStatistics();
+        updateCharts();
+        updateRecentPosts();
+
+        // Auto-refresh a cada 30 segundos
+        setInterval(() => {
+            updateStatistics();
+            updateRecentPosts();
+        }, 30000);
+    </script>
+</body>
+</html>
