@@ -48,7 +48,7 @@ export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtw
     query GetUserTokens($address: String!) {
       token(
         where: {
-          creator_address: {_eq: $address}
+          creator: {_eq: $address}
         }
         limit: 50
         order_by: {timestamp: desc}
