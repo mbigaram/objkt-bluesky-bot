@@ -46,33 +46,35 @@ const OBJKT_GRAPHQL_ENDPOINT = "https://data.objkt.com/v3/graphql";
 export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtwork[]> {
   const query = `
     query GetUserTokens($address: String!) {
-      token(
+      token_creator(
         where: {
-          creator: {_eq: $address}
+          creator_address: {_eq: $address}
         }
         limit: 50
-        order_by: {timestamp: desc}
+        order_by: {token: {timestamp: desc}}
       ) {
-        token_id
-        name
-        description
-        display_uri
-        artifact_uri
-        thumbnail_uri
-        mime
-        timestamp
-        fa {
+        token {
+          token_id
           name
-        }
-        listings_active(
-          limit: 1
-          order_by: {price_xtz: asc}
-        ) {
-          price
-          price_xtz
-          currency {
-            symbol
-            decimals
+          description
+          display_uri
+          artifact_uri
+          thumbnail_uri
+          mime
+          timestamp
+          fa {
+            name
+          }
+          listings_active(
+            limit: 1
+            order_by: {price_xtz: asc}
+          ) {
+            price
+            price_xtz
+            currency {
+              symbol
+              decimals
+            }
           }
         }
       }
@@ -101,10 +103,11 @@ export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtw
       throw new Error(data.errors[0].message);
     }
 
-    const tokens = data.data?.token || [];
+    const creators = data.data?.token_creator || [];
     
-    return tokens
-      .map((token: any) => {
+    return creators
+      .map((creator: any) => {
+        const token = creator.token;
         const listing = token.listings_active?.[0];
         
         // Convert IPFS URLs to gateway URLs
