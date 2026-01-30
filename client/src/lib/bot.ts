@@ -193,7 +193,8 @@ export class ObjktBlueskyBot {
 
     // Build the post text with new format
     const message = schedule?.message || this.config.customMessage;
-    const postText = `${message}\n\n${artwork.name}\n${artwork.price} XTZ\n\n${this.config.profileUrl}`;
+    const profileLink = this.config.profileUrl.startsWith('http') ? this.config.profileUrl : `https://${this.config.profileUrl}`;
+    const postText = `${message}\n\n${artwork.name}\n${artwork.price} XTZ\n\n🔗 ${profileLink}`;
 
     // Download the artwork
     let imageBlob: Blob | undefined;
@@ -244,7 +245,8 @@ export class ObjktBlueskyBot {
       throw new Error("Artwork not found");
     }
 
-    const postText = `${this.config.customMessage}\n\n${artwork.name}\n${artwork.price} XTZ\n${this.config.profileUrl}`;
+    const profileLink = this.config.profileUrl.startsWith('http') ? this.config.profileUrl : `https://${this.config.profileUrl}`;
+    const postText = `${this.config.customMessage}\n\n${artwork.name}\n${artwork.price} XTZ\n\n🔗 ${profileLink}`;
 
     let imageBlob: Blob | undefined;
     let imageMimeType: string | undefined;
