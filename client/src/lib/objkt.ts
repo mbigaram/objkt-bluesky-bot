@@ -153,10 +153,23 @@ export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtw
  */
 export async function downloadArtwork(url: string): Promise<Blob> {
   try {
-    const response = await fetch(url);
+    // Handle IPFS URLs
+    let fetchUrl = url;
+    if (url.startsWith("ipfs://")) {
+      fetchUrl = url.replace("ipfs://", "https://ipfs.io/ipfs/");
+    }
+    
+    const response = await fetch(fetchUrl, {
+      mode: 'cors',
+      headers: {
+        'Accept': '*/*'
+      }
+    });
+    
     if (!response.ok) {
       throw new Error(`Failed to download artwork: ${response.status}`);
     }
+    
     return await response.blob();
   } catch (error) {
     console.error("Error downloading artwork:", error);

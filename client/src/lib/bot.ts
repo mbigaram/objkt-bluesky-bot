@@ -193,15 +193,15 @@ export class ObjktBlueskyBot {
 
     // Build the post text with new format
     const message = schedule?.message || this.config.customMessage;
-    const postText = `${message}\n\n${artwork.name}\n${artwork.price} XTZ\n${this.config.profileUrl}`;
+    const postText = `${message}\n\n${artwork.name}\n${artwork.price} XTZ\n\n${this.config.profileUrl}`;
 
     // Download the artwork
     let imageBlob: Blob | undefined;
     let imageMimeType: string | undefined;
 
     try {
-      // Use display_uri for posting (optimized for display)
-      const imageUrl = artwork.imageUrl || artwork.thumbnailUrl;
+      // Use artifact_uri for posting (full quality)
+      const imageUrl = artwork.artifactUrl || artwork.imageUrl || artwork.thumbnailUrl;
       
       if (imageUrl) {
         imageBlob = await downloadArtwork(imageUrl);

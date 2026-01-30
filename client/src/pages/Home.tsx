@@ -247,38 +247,6 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Configuration Panel */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Custom Message */}
-            <Card className="p-6 border-4 border-border bg-card brutal-shadow">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center">
-                  <Zap className="w-6 h-6 text-secondary-foreground" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold">Mensagem Personalizada</h2>
-                  <p className="text-sm text-muted-foreground">Adicione uma mensagem às suas postagens</p>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="message" className="text-base font-semibold mb-2 block">
-                    Sua Mensagem
-                  </Label>
-                  <Textarea
-                    id="message"
-                    value={customMessage}
-                    onChange={(e) => setCustomMessage(e.target.value)}
-                    placeholder="Ex: Good morning! ☀️"
-                    className="min-h-[100px] border-2 text-base"
-                    disabled={isActive}
-                  />
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Formato final: "{customMessage} - [Nome da Arte] - [Preço] XTZ"
-                  </p>
-                </div>
-              </div>
-            </Card>
-
             {/* API Configuration */}
             <Card className="p-6 border-4 border-border bg-card brutal-shadow">
               <div className="flex items-center gap-3 mb-6">
@@ -373,7 +341,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">Horários de Postagem</h2>
-                  <p className="text-sm text-muted-foreground">Configure até 4 horários</p>
+                  <p className="text-sm text-muted-foreground">Configure até 4 horários com mensagens personalizadas</p>
                 </div>
               </div>
 
