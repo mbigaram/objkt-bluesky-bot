@@ -41,41 +41,38 @@ export interface ObjktArtwork {
 const OBJKT_GRAPHQL_ENDPOINT = "https://data.objkt.com/v3/graphql";
 
 /**
- * Fetch artworks from a Tezos address
+ * Fetch artworks created by a Tezos address
  */
 export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtwork[]> {
   const query = `
     query GetUserTokens($address: String!) {
-      token_holder(
+      token(
         where: {
-          holder_address: {_eq: $address}
-          quantity: {_gt: "0"}
+          creator_address: {_eq: $address}
         }
         limit: 50
-        order_by: {last_incremented_at: desc}
+        order_by: {timestamp: desc}
       ) {
-        token {
-          token_id
+        token_id
+        name
+        description
+        display_uri
+        artifact_uri
+        thumbnail_uri
+        mime
+        timestamp
+        fa {
           name
-          description
-          display_uri
-          artifact_uri
-          thumbnail_uri
-          mime
-          timestamp
-          fa {
-            name
-          }
-          listings_active(
-            limit: 1
-            order_by: {price_xtz: asc}
-          ) {
-            price
-            price_xtz
-            currency {
-              symbol
-              decimals
-            }
+        }
+        listings_active(
+          limit: 1
+          order_by: {price_xtz: asc}
+        ) {
+          price
+          price_xtz
+          currency {
+            symbol
+            decimals
           }
         }
       }
@@ -104,11 +101,10 @@ export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtw
       throw new Error(data.errors[0].message);
     }
 
-    const holders = data.data?.token_holder || [];
+    const tokens = data.data?.token || [];
     
-    return holders
-      .map((holder: any) => {
-        const token = holder.token;
+    return tokens
+      .map((token: any) => {
         const listing = token.listings_active?.[0];
         
         // Convert IPFS URLs to gateway URLs

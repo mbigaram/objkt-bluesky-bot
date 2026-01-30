@@ -21,6 +21,7 @@ interface ScheduleTime {
   id: number;
   time: string;
   enabled: boolean;
+  message?: string;
 }
 
 export default function Home() {
@@ -29,6 +30,7 @@ export default function Home() {
   const [blueskyHandle, setBlueskyHandle] = useState("");
   const [blueskyPassword, setBlueskyPassword] = useState("");
   const [customMessage, setCustomMessage] = useState("Good morning! ☀️");
+  const [profileUrl, setProfileUrl] = useState("");
   const [schedules, setSchedules] = useState<ScheduleTime[]>([
     { id: 1, time: "09:00", enabled: true },
     { id: 2, time: "13:00", enabled: true },
@@ -57,6 +59,7 @@ export default function Home() {
         setBlueskyHandle(config.blueskyHandle || "");
         setBlueskyPassword(config.blueskyPassword || "");
         setCustomMessage(config.customMessage || "Good morning! ☀️");
+        setProfileUrl(config.profileUrl || "");
         setSchedules(config.schedules || schedules);
         setIsConfigured(true);
       } catch (error) {
@@ -114,6 +117,7 @@ export default function Home() {
       blueskyHandle,
       blueskyPassword,
       customMessage,
+      profileUrl,
       schedules,
     };
 
@@ -167,6 +171,7 @@ export default function Home() {
         blueskyHandle,
         blueskyPassword,
         customMessage,
+        profileUrl,
         schedules,
       };
 
@@ -333,6 +338,23 @@ export default function Home() {
                   </p>
                 </div>
 
+                <div>
+                  <Label htmlFor="profile-url" className="text-base font-semibold mb-2 block">
+                    URL do Seu Perfil (Link para compartilhar)
+                  </Label>
+                  <Input
+                    id="profile-url"
+                    value={profileUrl}
+                    onChange={(e) => setProfileUrl(e.target.value)}
+                    placeholder="https://objkt.com/profile/seu-endereco"
+                    className="border-2 text-base"
+                    disabled={isActive}
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Link do seu perfil no objkt.com ou Bluesky para incluir nos posts
+                  </p>
+                </div>
+
                 <Button 
                   onClick={handleSaveConfig}
                   disabled={isActive}
@@ -386,7 +408,17 @@ export default function Home() {
                       value={schedule.time}
                       onChange={(e) => handleUpdateTime(schedule.id, e.target.value)}
                       disabled={!schedule.enabled || isActive}
-                      className="border-2 text-base font-mono"
+                      className="border-2 text-base font-mono mb-2"
+                    />
+                    <Input
+                      type="text"
+                      placeholder="Mensagem personalizada (opcional)"
+                      value={schedule.message || ''}
+                      onChange={(e) => setSchedules(schedules.map(s => 
+                        s.id === schedule.id ? { ...s, message: e.target.value } : s
+                      ))}
+                      disabled={!schedule.enabled || isActive}
+                      className="border-2 text-base"
                     />
                   </div>
                 ))}

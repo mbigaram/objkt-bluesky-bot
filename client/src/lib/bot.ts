@@ -11,10 +11,12 @@ export interface BotConfig {
   blueskyHandle: string;
   blueskyPassword: string;
   customMessage: string;
+  profileUrl: string;
   schedules: Array<{
     id: number;
     time: string;
     enabled: boolean;
+    message?: string;
   }>;
 }
 
@@ -157,13 +159,13 @@ export class ObjktBlueskyBot {
     const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
 
     // Check if current time matches any enabled schedule
-    const shouldPost = this.config.schedules.some(
+    const matchingSchedule = this.config.schedules.find(
       s => s.enabled && s.time === currentTime
     );
 
-    if (shouldPost) {
+    if (matchingSchedule) {
       try {
-        await this.postNextArtwork();
+        await this.postNextArtwork(matchingSchedule);
         this.calculateNextPostTime();
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -176,7 +178,7 @@ export class ObjktBlueskyBot {
   /**
    * Post the next artwork
    */
-  private async postNextArtwork(): Promise<void> {
+  private async postNextArtwork(schedule?: any): Promise<void> {
     if (!this.session) {
       throw new Error("Not authenticated");
     }
@@ -185,12 +187,13 @@ export class ObjktBlueskyBot {
       throw new Error("No artworks available");
     }
 
-    // Get the next artwork (rotate through the list)
-    const artwork = this.artworks[this.currentArtworkIndex];
-    this.currentArtworkIndex = (this.currentArtworkIndex + 1) % this.artworks.length;
+    // Get a random artwork
+    const randomIndex = Math.floor(Math.random() * this.artworks.length);
+    const artwork = this.artworks[randomIndex];
 
-    // Build the post text
-    const postText = `${this.config.customMessage} - ${artwork.name} - ${artwork.price} XTZ`;
+    // Build the post text with new format
+    const message = schedule?.message || this.config.customMessage;
+    const postText = `${message}\n\n${artwork.name}\n${artwork.price} XTZ\n${this.config.profileUrl}`;
 
     // Download the artwork
     let imageBlob: Blob | undefined;
@@ -241,7 +244,7 @@ export class ObjktBlueskyBot {
       throw new Error("Artwork not found");
     }
 
-    const postText = `${this.config.customMessage} - ${artwork.name} - ${artwork.price} XTZ`;
+    const postText = `${this.config.customMessage}\n\n${artwork.name}\n${artwork.price} XTZ\n${this.config.profileUrl}`;
 
     let imageBlob: Blob | undefined;
     let imageMimeType: string | undefined;
