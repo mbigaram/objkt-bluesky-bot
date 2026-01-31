@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useState, useEffect, useRef, memo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, ExternalLink } from "lucide-react";
 import { ObjktBlueskyBot, BotConfig } from "@/lib/bot";
 import { ObjktArtwork } from "@/lib/objkt";
@@ -24,63 +24,6 @@ interface ScheduleTime {
   message?: string;
 }
 
-/**
- * Componente de Card de Horário isolado para evitar re-renderizações desnecessárias
- * e garantir que o estado local do input não interfira com outros cards.
- */
-const ScheduleCard = memo(({ 
-  schedule, 
-  isActive, 
-  onToggle, 
-  onUpdateTime, 
-  onUpdateMessage 
-}: { 
-  schedule: ScheduleTime; 
-  isActive: boolean;
-  onToggle: (id: number) => void;
-  onUpdateTime: (id: number, time: string) => void;
-  onUpdateMessage: (id: number, message: string) => void;
-}) => {
-  return (
-    <div 
-      className={`p-4 border-2 rounded-lg transition-all ${
-        schedule.enabled 
-          ? 'border-primary bg-primary/5' 
-          : 'border-border bg-muted/30'
-      }`}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <Label htmlFor={`switch-${schedule.id}`} className="text-base font-semibold cursor-pointer">
-          Horário {schedule.id}
-        </Label>
-        <Switch 
-          id={`switch-${schedule.id}`}
-          checked={schedule.enabled}
-          onCheckedChange={() => onToggle(schedule.id)}
-          disabled={isActive}
-        />
-      </div>
-      <Input
-        type="time"
-        value={schedule.time}
-        onChange={(e) => onUpdateTime(schedule.id, e.target.value)}
-        disabled={!schedule.enabled || isActive}
-        className="border-2 text-base font-mono mb-2"
-      />
-      <Input
-        type="text"
-        placeholder="Mensagem personalizada (opcional)"
-        value={schedule.message || ''}
-        onChange={(e) => onUpdateMessage(schedule.id, e.target.value)}
-        disabled={!schedule.enabled || isActive}
-        className="border-2 text-base"
-      />
-    </div>
-  );
-});
-
-ScheduleCard.displayName = "ScheduleCard";
-
 export default function Home() {
   // Configuration state
   const [tezosAddress, setTezosAddress] = useState("");
@@ -88,6 +31,8 @@ export default function Home() {
   const [blueskyPassword, setBlueskyPassword] = useState("");
   const [customMessage, setCustomMessage] = useState("Good morning! ☀️");
   const [profileUrl, setProfileUrl] = useState("");
+  
+  // Lista inicial de horários
   const [schedules, setSchedules] = useState<ScheduleTime[]>([
     { id: 1, time: "09:00", enabled: true },
     { id: 2, time: "13:00", enabled: true },
@@ -112,15 +57,13 @@ export default function Home() {
     if (savedConfig) {
       try {
         const config = JSON.parse(savedConfig);
-        setTezosAddress(config.tezosAddress || "");
-        setBlueskyHandle(config.blueskyHandle || "");
-        setBlueskyPassword(config.blueskyPassword || "");
-        setCustomMessage(config.customMessage || "Good morning! ☀️");
-        setProfileUrl(config.profileUrl || "");
+        if (config.tezosAddress) setTezosAddress(config.tezosAddress);
+        if (config.blueskyHandle) setBlueskyHandle(config.blueskyHandle);
+        if (config.blueskyPassword) setBlueskyPassword(config.blueskyPassword);
+        if (config.customMessage) setCustomMessage(config.customMessage);
+        if (config.profileUrl) setProfileUrl(config.profileUrl);
         if (config.schedules && Array.isArray(config.schedules)) {
-          // Garante que os IDs sejam únicos e na ordem correta
-          const sortedSchedules = [...config.schedules].sort((a, b) => a.id - b.id);
-          setSchedules(sortedSchedules);
+          setSchedules(config.schedules);
         }
         setIsConfigured(true);
       } catch (error) {
@@ -153,13 +96,8 @@ export default function Home() {
           }
         }
         
-        if (status?.lastPost) {
-          setLastPost(new Date(status.lastPost));
-        }
-        
-        if (status?.totalPosts !== undefined) {
-          setTotalPosts(status.totalPosts);
-        }
+        if (status?.lastPost) setLastPost(new Date(status.lastPost));
+        if (status?.totalPosts !== undefined) setTotalPosts(status.totalPosts);
       }, 1000);
 
       return () => clearInterval(interval);
@@ -186,25 +124,16 @@ export default function Home() {
     toast.success("Configuração salva com sucesso!");
   };
 
-  const handleToggleSchedule = (id: number) => {
-    setSchedules(prev => {
-      const newSchedules = prev.map(s => 
-        s.id === id ? { ...s, enabled: !s.enabled } : s
-      );
-      return newSchedules;
+  // Funções de atualização de horários simplificadas e isoladas
+  const updateScheduleField = (id: number, field: keyof ScheduleTime, value: any) => {
+    setSchedules(prevSchedules => {
+      return prevSchedules.map(s => {
+        if (s.id === id) {
+          return { ...s, [field]: value };
+        }
+        return s;
+      });
     });
-  };
-
-  const handleUpdateTime = (id: number, time: string) => {
-    setSchedules(prev => prev.map(s => 
-      s.id === id ? { ...s, time } : s
-    ));
-  };
-
-  const handleUpdateMessage = (id: number, message: string) => {
-    setSchedules(prev => prev.map(s => 
-      s.id === id ? { ...s, message } : s
-    ));
   };
 
   const handleActivateBot = async () => {
@@ -247,9 +176,7 @@ export default function Home() {
 
       botRef.current = bot;
       setIsActive(true);
-      
-      const fetchedArtworks = bot.getArtworks();
-      setArtworks(fetchedArtworks);
+      setArtworks(bot.getArtworks());
 
       const status = bot.getStatus();
       if (status.nextPost) {
@@ -259,9 +186,7 @@ export default function Home() {
 
       toast.success("Bot ativado! 🚀");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
-      toast.error(`Erro ao ativar bot: ${errorMessage}`);
-      console.error("Bot activation error:", error);
+      toast.error(`Erro ao ativar bot: ${error instanceof Error ? error.message : "Erro desconhecido"}`);
     } finally {
       setIsLoading(false);
     }
@@ -278,9 +203,7 @@ export default function Home() {
       await botRef.current.postArtwork(artworkId);
       toast.success("Post enviado com sucesso!");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
-      toast.error(`Erro ao postar: ${errorMessage}`);
-      console.error("Post error:", error);
+      toast.error(`Erro ao postar: ${error instanceof Error ? error.message : "Erro desconhecido"}`);
     } finally {
       setIsLoading(false);
     }
@@ -296,14 +219,12 @@ export default function Home() {
               <h1 className="text-4xl font-bold text-primary mb-1">objkt → Bluesky Bot</h1>
               <p className="text-muted-foreground">Automatize suas postagens de arte NFT</p>
             </div>
-            <div className="flex items-center gap-4">
-              {isActive && (
-                <div className="flex items-center gap-2 bg-primary/10 border-2 border-primary px-4 py-2 rounded-lg">
-                  <Activity className="w-5 h-5 text-primary animate-pulse" />
-                  <span className="font-semibold text-primary">ATIVO</span>
-                </div>
-              )}
-            </div>
+            {isActive && (
+              <div className="flex items-center gap-2 bg-primary/10 border-2 border-primary px-4 py-2 rounded-lg">
+                <Activity className="w-5 h-5 text-primary animate-pulse" />
+                <span className="font-semibold text-primary">ATIVO</span>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -325,73 +246,27 @@ export default function Home() {
               </div>
 
               <div className="space-y-6">
-                <div>
-                  <Label htmlFor="tezos" className="text-base font-semibold mb-2 block">
-                    Endereço Tezos (objkt.com)
-                  </Label>
-                  <Input
-                    id="tezos"
-                    value={tezosAddress}
-                    onChange={(e) => setTezosAddress(e.target.value)}
-                    placeholder="tz1..."
-                    className="font-mono border-2 text-base"
-                    disabled={isActive}
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="tezos">Endereço Tezos (objkt.com)</Label>
+                  <Input id="tezos" value={tezosAddress} onChange={(e) => setTezosAddress(e.target.value)} placeholder="tz1..." className="font-mono border-2" disabled={isActive} />
                 </div>
 
-                <div>
-                  <Label htmlFor="bluesky-handle" className="text-base font-semibold mb-2 block">
-                    Handle do Bluesky
-                  </Label>
-                  <Input
-                    id="bluesky-handle"
-                    value={blueskyHandle}
-                    onChange={(e) => setBlueskyHandle(e.target.value)}
-                    placeholder="seu-handle.bsky.social"
-                    className="border-2 text-base"
-                    disabled={isActive}
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="bluesky-handle">Handle do Bluesky</Label>
+                  <Input id="bluesky-handle" value={blueskyHandle} onChange={(e) => setBlueskyHandle(e.target.value)} placeholder="seu-handle.bsky.social" className="border-2" disabled={isActive} />
                 </div>
 
-                <div>
-                  <Label htmlFor="bluesky-password" className="text-base font-semibold mb-2 block">
-                    Senha/App Password do Bluesky
-                  </Label>
-                  <Input
-                    id="bluesky-password"
-                    type="password"
-                    value={blueskyPassword}
-                    onChange={(e) => setBlueskyPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    disabled={isActive}
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Recomendado: Use um App Password gerado nas configurações do Bluesky
-                  </p>
+                <div className="space-y-2">
+                  <Label htmlFor="bluesky-password">Senha/App Password do Bluesky</Label>
+                  <Input id="bluesky-password" type="password" value={blueskyPassword} onChange={(e) => setBlueskyPassword(e.target.value)} placeholder="••••••••••••" className="border-2" disabled={isActive} />
                 </div>
 
-                <div>
-                  <Label htmlFor="profile-url" className="text-base font-semibold mb-2 block">
-                    URL do Seu Perfil (Link para compartilhar)
-                  </Label>
-                  <Input
-                    id="profile-url"
-                    value={profileUrl}
-                    onChange={(e) => setProfileUrl(e.target.value)}
-                    placeholder="https://objkt.com/profile/seu-endereco"
-                    className="border-2 text-base"
-                    disabled={isActive}
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Link do seu perfil no objkt.com ou Bluesky para incluir nos posts
-                  </p>
+                <div className="space-y-2">
+                  <Label htmlFor="profile-url">URL do Seu Perfil</Label>
+                  <Input id="profile-url" value={profileUrl} onChange={(e) => setProfileUrl(e.target.value)} placeholder="https://objkt.com/profile/..." className="border-2" disabled={isActive} />
                 </div>
 
-                <Button 
-                  onClick={handleSaveConfig}
-                  disabled={isActive}
-                  className="w-full h-12 text-base font-bold border-4 border-primary bg-primary text-primary-foreground hover:bg-primary/90 brutal-shadow-hover transition-all"
-                >
+                <Button onClick={handleSaveConfig} disabled={isActive} className="w-full h-12 text-base font-bold border-4 border-primary bg-primary text-primary-foreground brutal-shadow-hover transition-all">
                   Salvar Configuração
                 </Button>
               </div>
@@ -405,20 +280,42 @@ export default function Home() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">Horários de Postagem</h2>
-                  <p className="text-sm text-muted-foreground">Configure até 4 horários com mensagens personalizadas</p>
+                  <p className="text-sm text-muted-foreground">Configure até 4 horários independentes</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {schedules.map((schedule) => (
-                  <ScheduleCard 
-                    key={`schedule-item-${schedule.id}`}
-                    schedule={schedule}
-                    isActive={isActive}
-                    onToggle={handleToggleSchedule}
-                    onUpdateTime={handleUpdateTime}
-                    onUpdateMessage={handleUpdateMessage}
-                  />
+                  <div 
+                    key={`sched-card-${schedule.id}`}
+                    className={`p-4 border-2 rounded-lg transition-all ${
+                      schedule.enabled ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-base font-semibold">Horário {schedule.id}</span>
+                      <Switch 
+                        checked={schedule.enabled}
+                        onCheckedChange={(checked) => updateScheduleField(schedule.id, 'enabled', checked)}
+                        disabled={isActive}
+                      />
+                    </div>
+                    <Input
+                      type="time"
+                      value={schedule.time}
+                      onChange={(e) => updateScheduleField(schedule.id, 'time', e.target.value)}
+                      disabled={!schedule.enabled || isActive}
+                      className="border-2 font-mono mb-2"
+                    />
+                    <Input
+                      type="text"
+                      placeholder="Mensagem (opcional)"
+                      value={schedule.message || ''}
+                      onChange={(e) => updateScheduleField(schedule.id, 'message', e.target.value)}
+                      disabled={!schedule.enabled || isActive}
+                      className="border-2"
+                    />
+                  </div>
                 ))}
               </div>
             </Card>
@@ -426,36 +323,17 @@ export default function Home() {
 
           {/* Status Panel */}
           <div className="space-y-8">
-            {/* Activation */}
             <Card className="p-6 border-4 border-border bg-card brutal-shadow-secondary">
               <h3 className="text-xl font-bold mb-4">Status do Bot</h3>
-              
               <Button
                 onClick={handleActivateBot}
                 disabled={!isConfigured || isLoading}
                 className={`w-full h-14 text-lg font-bold border-4 transition-all ${
-                  isActive
-                    ? 'border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                    : 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
+                  isActive ? 'border-destructive bg-destructive text-destructive-foreground' : 'border-primary bg-primary text-primary-foreground'
                 } brutal-shadow-hover`}
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Carregando...
-                  </>
-                ) : isActive ? (
-                  'Desativar Bot'
-                ) : (
-                  'Ativar Bot'
-                )}
+                {isLoading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : isActive ? 'Desativar Bot' : 'Ativar Bot'}
               </Button>
-
-              {!isConfigured && (
-                <p className="text-sm text-muted-foreground mt-3 text-center">
-                  Configure o bot primeiro
-                </p>
-              )}
 
               {isActive && (
                 <div className="mt-6 space-y-4">
@@ -468,13 +346,12 @@ export default function Home() {
                       <p className="text-lg font-bold">{nextPost}</p>
                     </div>
                   )}
-
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-muted/30 border-2 border-border rounded-lg">
-                      <p className="text-xs text-muted-foreground mb-1">Total de Posts</p>
+                    <div className="p-3 bg-muted/30 border-2 border-border rounded-lg text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Posts</p>
                       <p className="text-2xl font-bold text-primary">{totalPosts}</p>
                     </div>
-                    <div className="p-3 bg-muted/30 border-2 border-border rounded-lg">
+                    <div className="p-3 bg-muted/30 border-2 border-border rounded-lg text-center">
                       <p className="text-xs text-muted-foreground mb-1">Artes</p>
                       <p className="text-2xl font-bold text-secondary">{artworks.length}</p>
                     </div>
@@ -490,29 +367,13 @@ export default function Home() {
                   <ImageIcon className="w-5 h-5 text-secondary" />
                   <h3 className="text-xl font-bold">Suas Artes</h3>
                 </div>
-
-                <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                  {artworks.slice(0, 10).map((artwork, index) => (
-                    <div 
-                      key={artwork.id || `artwork-${index}`}
-                      className="p-3 bg-muted/30 border-2 border-border rounded-lg hover:border-primary transition-all group"
-                    >
-                      <img 
-                        src={artwork.thumbnailUrl || artwork.imageUrl} 
-                        alt={artwork.name}
-                        className="w-full h-32 object-cover rounded mb-2"
-                        loading="lazy"
-                      />
-                      <p className="font-semibold text-sm mb-1 truncate">{artwork.name}</p>
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                  {artworks.slice(0, 10).map((artwork) => (
+                    <div key={artwork.id} className="p-3 bg-muted/30 border-2 border-border rounded-lg hover:border-primary transition-all group">
+                      <img src={artwork.thumbnailUrl || artwork.imageUrl} alt={artwork.name} className="w-full h-24 object-cover rounded mb-2" loading="lazy" />
                       <div className="flex items-center justify-between">
-                        <p className="text-primary font-bold font-mono text-sm">{artwork.price} XTZ</p>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleTestPost(artwork.id)}
-                          disabled={isLoading}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
+                        <p className="font-semibold text-xs truncate flex-1">{artwork.name}</p>
+                        <Button size="sm" variant="outline" onClick={() => handleTestPost(artwork.id)} disabled={isLoading} className="ml-2 h-7 w-7 p-0">
                           <ExternalLink className="w-3 h-3" />
                         </Button>
                       </div>
@@ -521,39 +382,13 @@ export default function Home() {
                 </div>
               </Card>
             )}
-
-            {/* Info */}
-            <Card className="p-6 border-4 border-border bg-card brutal-shadow-secondary">
-              <h3 className="text-lg font-bold mb-3">Como Funciona</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
-                  <span className="text-primary font-bold">1.</span>
-                  Configure suas credenciais do objkt.com e Bluesky
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary font-bold">2.</span>
-                  Escolha até 4 horários para postagens automáticas
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary font-bold">3.</span>
-                  Personalize a mensagem que acompanha suas artes
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary font-bold">4.</span>
-                  Ative o bot e relaxe! Ele cuida do resto
-                </li>
-              </ul>
-            </Card>
           </div>
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t-4 border-primary mt-20">
-        <div className="container py-8">
-          <p className="text-center text-muted-foreground">
-            Bot desenvolvido para automatizar postagens de arte NFT do objkt.com no Bluesky
-          </p>
+        <div className="container py-8 text-center text-muted-foreground text-sm">
+          Bot desenvolvido para automatizar postagens de arte NFT do objkt.com no Bluesky
         </div>
       </footer>
     </div>
