@@ -127,14 +127,20 @@ export default function Home() {
   };
 
   const handleToggleSchedule = (id: number) => {
-    setSchedules(schedules.map(s => 
+    setSchedules(prev => prev.map(s => 
       s.id === id ? { ...s, enabled: !s.enabled } : s
     ));
   };
 
   const handleUpdateTime = (id: number, time: string) => {
-    setSchedules(schedules.map(s => 
+    setSchedules(prev => prev.map(s => 
       s.id === id ? { ...s, time } : s
+    ));
+  };
+
+  const handleUpdateMessage = (id: number, message: string) => {
+    setSchedules(prev => prev.map(s => 
+      s.id === id ? { ...s, message } : s
     ));
   };
 
@@ -298,7 +304,6 @@ export default function Home() {
                     value={blueskyPassword}
                     onChange={(e) => setBlueskyPassword(e.target.value)}
                     placeholder="••••••••••••"
-                    className="border-2 text-base"
                     disabled={isActive}
                   />
                   <p className="text-xs text-muted-foreground mt-2">
@@ -382,9 +387,7 @@ export default function Home() {
                       type="text"
                       placeholder="Mensagem personalizada (opcional)"
                       value={schedule.message || ''}
-                      onChange={(e) => setSchedules(schedules.map(s => 
-                        s.id === schedule.id ? { ...s, message: e.target.value } : s
-                      ))}
+                      onChange={(e) => handleUpdateMessage(schedule.id, e.target.value)}
                       disabled={!schedule.enabled || isActive}
                       className="border-2 text-base"
                     />
@@ -464,7 +467,7 @@ export default function Home() {
                 <div className="space-y-4 max-h-[600px] overflow-y-auto">
                   {artworks.slice(0, 10).map((artwork, index) => (
                     <div 
-                      key={index}
+                      key={artwork.id || index}
                       className="p-3 bg-muted/30 border-2 border-border rounded-lg hover:border-primary transition-all group"
                     >
                       <img 
