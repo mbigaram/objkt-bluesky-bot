@@ -32,7 +32,7 @@ export default function Home() {
   const [customMessage, setCustomMessage] = useState("Good morning! ☀️");
   const [profileUrl, setProfileUrl] = useState("");
   
-  // Lista inicial de horários
+  // Lista inicial de horários - Criada de forma estática
   const [schedules, setSchedules] = useState<ScheduleTime[]>([
     { id: 1, time: "09:00", enabled: true },
     { id: 2, time: "13:00", enabled: true },
@@ -63,7 +63,14 @@ export default function Home() {
         if (config.customMessage) setCustomMessage(config.customMessage);
         if (config.profileUrl) setProfileUrl(config.profileUrl);
         if (config.schedules && Array.isArray(config.schedules)) {
-          setSchedules(config.schedules);
+          // Garante que cada objeto na lista seja uma nova referência
+          const cleanSchedules = config.schedules.map((s: any) => ({
+            id: Number(s.id),
+            time: String(s.time),
+            enabled: Boolean(s.enabled),
+            message: s.message || ""
+          }));
+          setSchedules(cleanSchedules);
         }
         setIsConfigured(true);
       } catch (error) {
@@ -88,18 +95,13 @@ export default function Home() {
             setNextPost(`Em ${hours}h ${minutes}m`);
           } else {
             setNextPost(next.toLocaleDateString("pt-BR", { 
-              day: "2-digit", 
-              month: "2-digit", 
-              hour: "2-digit", 
-              minute: "2-digit" 
+              day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" 
             }));
           }
         }
-        
         if (status?.lastPost) setLastPost(new Date(status.lastPost));
         if (status?.totalPosts !== undefined) setTotalPosts(status.totalPosts);
       }, 1000);
-
       return () => clearInterval(interval);
     }
   }, [isActive]);
@@ -109,29 +111,21 @@ export default function Home() {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
-
-    const config = {
-      tezosAddress,
-      blueskyHandle,
-      blueskyPassword,
-      customMessage,
-      profileUrl,
-      schedules,
-    };
-
+    const config = { tezosAddress, blueskyHandle, blueskyPassword, customMessage, profileUrl, schedules };
     localStorage.setItem("botConfig", JSON.stringify(config));
     setIsConfigured(true);
     toast.success("Configuração salva com sucesso!");
   };
 
-  // Funções de atualização de horários simplificadas e isoladas
+  // ATUALIZAÇÃO DE CAMPO - Garantindo imutabilidade total
   const updateScheduleField = (id: number, field: keyof ScheduleTime, value: any) => {
-    setSchedules(prevSchedules => {
-      return prevSchedules.map(s => {
+    setSchedules(prev => {
+      // Cria um novo array e novos objetos para garantir que o React detecte a mudança individualmente
+      return prev.map(s => {
         if (s.id === id) {
           return { ...s, [field]: value };
         }
-        return s;
+        return { ...s }; // Retorna uma nova referência mesmo para os não alterados para evitar bugs de memória
       });
     });
   };
@@ -141,13 +135,11 @@ export default function Home() {
       toast.error("Configure o bot primeiro");
       return;
     }
-
     const enabledSchedules = schedules.filter(s => s.enabled);
     if (enabledSchedules.length === 0) {
       toast.error("Ative pelo menos um horário");
       return;
     }
-
     if (isActive) {
       if (botRef.current) {
         botRef.current.stop();
@@ -159,34 +151,22 @@ export default function Home() {
       toast.success("Bot desativado");
       return;
     }
-
     setIsLoading(true);
     try {
-      const config: BotConfig = {
-        tezosAddress,
-        blueskyHandle,
-        blueskyPassword,
-        customMessage,
-        profileUrl,
-        schedules,
-      };
-
+      const config: BotConfig = { tezosAddress, blueskyHandle, blueskyPassword, customMessage, profileUrl, schedules };
       const bot = new ObjktBlueskyBot(config);
       await bot.start();
-
       botRef.current = bot;
       setIsActive(true);
       setArtworks(bot.getArtworks());
-
       const status = bot.getStatus();
       if (status.nextPost) {
         const next = new Date(status.nextPost);
         setNextPost(next.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
       }
-
       toast.success("Bot ativado! 🚀");
     } catch (error) {
-      toast.error(`Erro ao ativar bot: ${error instanceof Error ? error.message : "Erro desconhecido"}`);
+      toast.error(`Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`);
     } finally {
       setIsLoading(false);
     }
@@ -197,13 +177,12 @@ export default function Home() {
       toast.error("Bot não está ativo");
       return;
     }
-
     setIsLoading(true);
     try {
       await botRef.current.postArtwork(artworkId);
       toast.success("Post enviado com sucesso!");
     } catch (error) {
-      toast.error(`Erro ao postar: ${error instanceof Error ? error.message : "Erro desconhecido"}`);
+      toast.error(`Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`);
     } finally {
       setIsLoading(false);
     }
@@ -211,7 +190,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
       <header className="border-b-4 border-primary">
         <div className="container py-6">
           <div className="flex items-center justify-between">
@@ -231,89 +209,69 @@ export default function Home() {
 
       <main className="container py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Configuration Panel */}
           <div className="lg:col-span-2 space-y-8">
-            {/* API Configuration */}
             <Card className="p-6 border-4 border-border bg-card brutal-shadow">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
                   <Settings className="w-6 h-6 text-primary-foreground" />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold">Configuração de APIs</h2>
-                  <p className="text-sm text-muted-foreground">Conecte suas contas</p>
-                </div>
+                <h2 className="text-2xl font-bold">Configuração de APIs</h2>
               </div>
-
               <div className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="tezos">Endereço Tezos (objkt.com)</Label>
                   <Input id="tezos" value={tezosAddress} onChange={(e) => setTezosAddress(e.target.value)} placeholder="tz1..." className="font-mono border-2" disabled={isActive} />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="bluesky-handle">Handle do Bluesky</Label>
                   <Input id="bluesky-handle" value={blueskyHandle} onChange={(e) => setBlueskyHandle(e.target.value)} placeholder="seu-handle.bsky.social" className="border-2" disabled={isActive} />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="bluesky-password">Senha/App Password do Bluesky</Label>
                   <Input id="bluesky-password" type="password" value={blueskyPassword} onChange={(e) => setBlueskyPassword(e.target.value)} placeholder="••••••••••••" className="border-2" disabled={isActive} />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="profile-url">URL do Seu Perfil</Label>
                   <Input id="profile-url" value={profileUrl} onChange={(e) => setProfileUrl(e.target.value)} placeholder="https://objkt.com/profile/..." className="border-2" disabled={isActive} />
                 </div>
-
                 <Button onClick={handleSaveConfig} disabled={isActive} className="w-full h-12 text-base font-bold border-4 border-primary bg-primary text-primary-foreground brutal-shadow-hover transition-all">
                   Salvar Configuração
                 </Button>
               </div>
             </Card>
 
-            {/* Schedule Configuration */}
             <Card className="p-6 border-4 border-border bg-card brutal-shadow">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center">
                   <Clock className="w-6 h-6 text-secondary-foreground" />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold">Horários de Postagem</h2>
-                  <p className="text-sm text-muted-foreground">Configure até 4 horários independentes</p>
-                </div>
+                <h2 className="text-2xl font-bold">Horários de Postagem</h2>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {schedules.map((schedule) => (
-                  <div 
-                    key={`sched-card-${schedule.id}`}
-                    className={`p-4 border-2 rounded-lg transition-all ${
-                      schedule.enabled ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'
-                    }`}
-                  >
+                {schedules.map((s) => (
+                  <div key={`card-${s.id}`} className={`p-4 border-2 rounded-lg transition-all ${s.enabled ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'}`}>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-base font-semibold">Horário {schedule.id}</span>
+                      <span className="text-base font-semibold">Horário {s.id}</span>
                       <Switch 
-                        checked={schedule.enabled}
-                        onCheckedChange={(checked) => updateScheduleField(schedule.id, 'enabled', checked)}
-                        disabled={isActive}
+                        checked={s.enabled} 
+                        onCheckedChange={(val) => updateScheduleField(s.id, 'enabled', val)} 
+                        disabled={isActive} 
                       />
                     </div>
-                    <Input
-                      type="time"
-                      value={schedule.time}
-                      onChange={(e) => updateScheduleField(schedule.id, 'time', e.target.value)}
-                      disabled={!schedule.enabled || isActive}
-                      className="border-2 font-mono mb-2"
+                    <Input 
+                      type="time" 
+                      value={s.time} 
+                      onChange={(e) => updateScheduleField(s.id, 'time', e.target.value)} 
+                      disabled={!s.enabled || isActive} 
+                      className="border-2 font-mono mb-2" 
                     />
-                    <Input
-                      type="text"
-                      placeholder="Mensagem (opcional)"
-                      value={schedule.message || ''}
-                      onChange={(e) => updateScheduleField(schedule.id, 'message', e.target.value)}
-                      disabled={!schedule.enabled || isActive}
-                      className="border-2"
+                    <Input 
+                      type="text" 
+                      placeholder="Mensagem (opcional)" 
+                      value={s.message || ''} 
+                      onChange={(e) => updateScheduleField(s.id, 'message', e.target.value)} 
+                      disabled={!s.enabled || isActive} 
+                      className="border-2" 
                     />
                   </div>
                 ))}
@@ -321,20 +279,12 @@ export default function Home() {
             </Card>
           </div>
 
-          {/* Status Panel */}
           <div className="space-y-8">
             <Card className="p-6 border-4 border-border bg-card brutal-shadow-secondary">
               <h3 className="text-xl font-bold mb-4">Status do Bot</h3>
-              <Button
-                onClick={handleActivateBot}
-                disabled={!isConfigured || isLoading}
-                className={`w-full h-14 text-lg font-bold border-4 transition-all ${
-                  isActive ? 'border-destructive bg-destructive text-destructive-foreground' : 'border-primary bg-primary text-primary-foreground'
-                } brutal-shadow-hover`}
-              >
+              <Button onClick={handleActivateBot} disabled={!isConfigured || isLoading} className={`w-full h-14 text-lg font-bold border-4 transition-all ${isActive ? 'border-destructive bg-destructive text-destructive-foreground' : 'border-primary bg-primary text-primary-foreground'} brutal-shadow-hover`}>
                 {isLoading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : isActive ? 'Desativar Bot' : 'Ativar Bot'}
               </Button>
-
               {isActive && (
                 <div className="mt-6 space-y-4">
                   {nextPost && (
@@ -360,7 +310,6 @@ export default function Home() {
               )}
             </Card>
 
-            {/* Artworks Preview */}
             {artworks.length > 0 && (
               <Card className="p-6 border-4 border-border bg-card brutal-shadow-secondary">
                 <div className="flex items-center gap-2 mb-4">

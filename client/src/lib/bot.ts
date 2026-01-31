@@ -33,8 +33,8 @@ export class ObjktBlueskyBot {
   private status: BotStatus;
   private intervalId?: number;
   private artworks: ObjktArtwork[] = [];
-  private currentArtworkIndex: number = 0;
   private session?: BlueskySession;
+  private lastPostedMinute: string = ""; // Evita múltiplas postagens no mesmo minuto
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -114,6 +114,7 @@ export class ObjktBlueskyBot {
     const enabledSchedules = this.config.schedules.filter(s => s.enabled);
     
     if (enabledSchedules.length === 0) {
+      this.status.nextPost = undefined;
       return;
     }
 
@@ -125,7 +126,7 @@ export class ObjktBlueskyBot {
       const scheduledTime = new Date();
       scheduledTime.setHours(hours, minutes, 0, 0);
 
-      // If the time has passed today, schedule for tomorrow
+      // Se o horário já passou hoje, agenda para amanhã
       if (scheduledTime <= now) {
         scheduledTime.setDate(scheduledTime.getDate() + 1);
       }
@@ -142,12 +143,12 @@ export class ObjktBlueskyBot {
    * Start the scheduler
    */
   private startScheduler(): void {
-    // Check every minute if it's time to post
+    // Verifica a cada 30 segundos para maior precisão
     this.intervalId = window.setInterval(() => {
       this.checkAndPost();
-    }, 60000); // Check every minute
+    }, 30000);
 
-    // Also check immediately
+    // Também verifica imediatamente
     this.checkAndPost();
   }
 
@@ -158,12 +159,18 @@ export class ObjktBlueskyBot {
     const now = new Date();
     const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
 
+    // Evita postar mais de uma vez no mesmo minuto
+    if (this.lastPostedMinute === currentTime) {
+      return;
+    }
+
     // Check if current time matches any enabled schedule
     const matchingSchedule = this.config.schedules.find(
       s => s.enabled && s.time === currentTime
     );
 
     if (matchingSchedule) {
+      this.lastPostedMinute = currentTime;
       try {
         await this.postNextArtwork(matchingSchedule);
         this.calculateNextPostTime();
@@ -191,7 +198,7 @@ export class ObjktBlueskyBot {
     const randomIndex = Math.floor(Math.random() * this.artworks.length);
     const artwork = this.artworks[randomIndex];
 
-    // Build the post text with new format
+    // Build the post text
     const message = schedule?.message || this.config.customMessage;
     const profileLink = this.config.profileUrl.startsWith('http') ? this.config.profileUrl : `https://${this.config.profileUrl}`;
     const postText = `${message}\n\n${artwork.name}\n${artwork.price} XTZ\n\n🔗 ${profileLink}`;
@@ -201,16 +208,13 @@ export class ObjktBlueskyBot {
     let imageMimeType: string | undefined;
 
     try {
-      // Prioritize display_uri (imageUrl) for posting as it's optimized for display
       const imageUrl = artwork.imageUrl || artwork.thumbnailUrl || artwork.artifactUrl;
       
       if (imageUrl) {
         imageBlob = await downloadArtwork(imageUrl);
         imageMimeType = imageBlob.type || artwork.mimeType;
 
-        // Ensure we have a valid image mime type
         if (!imageMimeType || !imageMimeType.startsWith("image/")) {
-           // Fallback to PNG if type is unknown but we have a blob
            if (imageBlob.size > 0) {
              imageMimeType = "image/png";
            } else {
