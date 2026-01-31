@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 import { Clock, Zap, Image as ImageIcon, Calendar, Settings, Activity, Loader2, ExternalLink } from "lucide-react";
@@ -60,7 +61,9 @@ export default function Home() {
         setBlueskyPassword(config.blueskyPassword || "");
         setCustomMessage(config.customMessage || "Good morning! ☀️");
         setProfileUrl(config.profileUrl || "");
-        setSchedules(config.schedules || schedules);
+        if (config.schedules && Array.isArray(config.schedules)) {
+          setSchedules(config.schedules);
+        }
         setIsConfigured(true);
       } catch (error) {
         console.error("Error loading config:", error);
@@ -353,7 +356,7 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {schedules.map((schedule) => (
                   <div 
-                    key={schedule.id}
+                    key={`schedule-${schedule.id}`}
                     className={`p-4 border-2 rounded-lg transition-all ${
                       schedule.enabled 
                         ? 'border-primary bg-primary/5' 
@@ -361,20 +364,15 @@ export default function Home() {
                     }`}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <Label className="text-base font-semibold">
+                      <Label htmlFor={`switch-${schedule.id}`} className="text-base font-semibold cursor-pointer">
                         Horário {schedule.id}
                       </Label>
-                      <button
-                        onClick={() => handleToggleSchedule(schedule.id)}
+                      <Switch 
+                        id={`switch-${schedule.id}`}
+                        checked={schedule.enabled}
+                        onCheckedChange={() => handleToggleSchedule(schedule.id)}
                         disabled={isActive}
-                        className={`w-12 h-6 rounded-full transition-all ${
-                          schedule.enabled ? 'bg-primary' : 'bg-muted'
-                        }`}
-                      >
-                        <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
-                          schedule.enabled ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                      </button>
+                      />
                     </div>
                     <Input
                       type="time"
@@ -467,7 +465,7 @@ export default function Home() {
                 <div className="space-y-4 max-h-[600px] overflow-y-auto">
                   {artworks.slice(0, 10).map((artwork, index) => (
                     <div 
-                      key={artwork.id || index}
+                      key={artwork.id || `artwork-${index}`}
                       className="p-3 bg-muted/30 border-2 border-border rounded-lg hover:border-primary transition-all group"
                     >
                       <img 
