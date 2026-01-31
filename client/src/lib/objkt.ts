@@ -141,7 +141,7 @@ export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtw
           timestamp: token.timestamp,
         };
       })
-      .filter((artwork: ObjktArtwork) => artwork.imageUrl); // Only return artworks with valid images
+      .filter((artwork: ObjktArtwork) => artwork.imageUrl || artwork.thumbnailUrl || artwork.artifactUrl); 
   } catch (error) {
     console.error("Error fetching objkt artworks:", error);
     throw error;
@@ -162,7 +162,7 @@ export async function downloadArtwork(url: string): Promise<Blob> {
     const response = await fetch(fetchUrl, {
       mode: 'cors',
       headers: {
-        'Accept': '*/*'
+        'Accept': 'image/*, */*'
       }
     });
     

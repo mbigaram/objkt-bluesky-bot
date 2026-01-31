@@ -201,18 +201,22 @@ export class ObjktBlueskyBot {
     let imageMimeType: string | undefined;
 
     try {
-      // Use artifact_uri for posting (full quality)
-      const imageUrl = artwork.artifactUrl || artwork.imageUrl || artwork.thumbnailUrl;
+      // Prioritize display_uri (imageUrl) for posting as it's optimized for display
+      const imageUrl = artwork.imageUrl || artwork.thumbnailUrl || artwork.artifactUrl;
       
       if (imageUrl) {
         imageBlob = await downloadArtwork(imageUrl);
-        imageMimeType = artwork.mimeType;
+        imageMimeType = imageBlob.type || artwork.mimeType;
 
-        // If mime type is not image, try to convert or skip
-        if (!imageMimeType.startsWith("image/")) {
-          console.warn(`Skipping non-image artwork: ${artwork.name} (${imageMimeType})`);
-          imageBlob = undefined;
-          imageMimeType = undefined;
+        // Ensure we have a valid image mime type
+        if (!imageMimeType || !imageMimeType.startsWith("image/")) {
+           // Fallback to PNG if type is unknown but we have a blob
+           if (imageBlob.size > 0) {
+             imageMimeType = "image/png";
+           } else {
+             imageBlob = undefined;
+             imageMimeType = undefined;
+           }
         }
       }
     } catch (error) {
@@ -252,15 +256,19 @@ export class ObjktBlueskyBot {
     let imageMimeType: string | undefined;
 
     try {
-      const imageUrl = artwork.imageUrl || artwork.thumbnailUrl;
+      const imageUrl = artwork.imageUrl || artwork.thumbnailUrl || artwork.artifactUrl;
       
       if (imageUrl) {
         imageBlob = await downloadArtwork(imageUrl);
-        imageMimeType = artwork.mimeType;
+        imageMimeType = imageBlob.type || artwork.mimeType;
 
-        if (!imageMimeType.startsWith("image/")) {
-          imageBlob = undefined;
-          imageMimeType = undefined;
+        if (!imageMimeType || !imageMimeType.startsWith("image/")) {
+           if (imageBlob.size > 0) {
+             imageMimeType = "image/png";
+           } else {
+             imageBlob = undefined;
+             imageMimeType = undefined;
+           }
         }
       }
     } catch (error) {

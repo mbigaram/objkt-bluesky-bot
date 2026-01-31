@@ -20,6 +20,44 @@ export interface BlueskyPost {
 const BLUESKY_API_URL = "https://bsky.social/xrpc";
 
 /**
+ * Helper to detect facets (links) in text
+ */
+function detectFacets(text: string) {
+  const facets: any[] = [];
+  const urlRegex = /https?:\/\/[^\s\n\r]+/g;
+  let match;
+
+  while ((match = urlRegex.exec(text)) !== null) {
+    const url = match[0];
+    const start = match.index;
+    const end = start + url.length;
+
+    // Bluesky uses byte offsets for facets, not character offsets
+    // We convert string to bytes to get correct offsets
+    const textBefore = text.slice(0, start);
+    const textMatch = text.slice(start, end);
+    
+    const byteStart = new TextEncoder().encode(textBefore).byteLength;
+    const byteEnd = byteStart + new TextEncoder().encode(textMatch).byteLength;
+
+    facets.push({
+      index: {
+        byteStart,
+        byteEnd,
+      },
+      features: [
+        {
+          $type: "app.bsky.richtext.facet#link",
+          uri: url,
+        },
+      ],
+    });
+  }
+
+  return facets.length > 0 ? facets : undefined;
+}
+
+/**
  * Create a session with Bluesky
  */
 export async function createBlueskySession(
@@ -103,6 +141,7 @@ export async function createPost(
       $type: "app.bsky.feed.post",
       text: post.text,
       createdAt: now,
+      facets: detectFacets(post.text),
     };
 
     // If there's an image, upload it first and add to embed
