@@ -10,11 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useState, useEffect, useRef } from "react";
-import { Clock, Zap, Image as ImageIcon, Calendar, Settings, Activity, Loader2, ExternalLink } from "lucide-react";
+import { useState, useEffect, useRef, memo } from "react";
+import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, ExternalLink } from "lucide-react";
 import { ObjktBlueskyBot, BotConfig } from "@/lib/bot";
 import { ObjktArtwork } from "@/lib/objkt";
 
@@ -24,6 +23,63 @@ interface ScheduleTime {
   enabled: boolean;
   message?: string;
 }
+
+/**
+ * Componente de Card de Horário isolado para evitar re-renderizações desnecessárias
+ * e garantir que o estado local do input não interfira com outros cards.
+ */
+const ScheduleCard = memo(({ 
+  schedule, 
+  isActive, 
+  onToggle, 
+  onUpdateTime, 
+  onUpdateMessage 
+}: { 
+  schedule: ScheduleTime; 
+  isActive: boolean;
+  onToggle: (id: number) => void;
+  onUpdateTime: (id: number, time: string) => void;
+  onUpdateMessage: (id: number, message: string) => void;
+}) => {
+  return (
+    <div 
+      className={`p-4 border-2 rounded-lg transition-all ${
+        schedule.enabled 
+          ? 'border-primary bg-primary/5' 
+          : 'border-border bg-muted/30'
+      }`}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <Label htmlFor={`switch-${schedule.id}`} className="text-base font-semibold cursor-pointer">
+          Horário {schedule.id}
+        </Label>
+        <Switch 
+          id={`switch-${schedule.id}`}
+          checked={schedule.enabled}
+          onCheckedChange={() => onToggle(schedule.id)}
+          disabled={isActive}
+        />
+      </div>
+      <Input
+        type="time"
+        value={schedule.time}
+        onChange={(e) => onUpdateTime(schedule.id, e.target.value)}
+        disabled={!schedule.enabled || isActive}
+        className="border-2 text-base font-mono mb-2"
+      />
+      <Input
+        type="text"
+        placeholder="Mensagem personalizada (opcional)"
+        value={schedule.message || ''}
+        onChange={(e) => onUpdateMessage(schedule.id, e.target.value)}
+        disabled={!schedule.enabled || isActive}
+        className="border-2 text-base"
+      />
+    </div>
+  );
+});
+
+ScheduleCard.displayName = "ScheduleCard";
 
 export default function Home() {
   // Configuration state
@@ -62,7 +118,9 @@ export default function Home() {
         setCustomMessage(config.customMessage || "Good morning! ☀️");
         setProfileUrl(config.profileUrl || "");
         if (config.schedules && Array.isArray(config.schedules)) {
-          setSchedules(config.schedules);
+          // Garante que os IDs sejam únicos e na ordem correta
+          const sortedSchedules = [...config.schedules].sort((a, b) => a.id - b.id);
+          setSchedules(sortedSchedules);
         }
         setIsConfigured(true);
       } catch (error) {
@@ -82,7 +140,6 @@ export default function Home() {
           const diff = next.getTime() - now.getTime();
           
           if (diff < 24 * 60 * 60 * 1000) {
-            // Less than 24 hours
             const hours = Math.floor(diff / (60 * 60 * 1000));
             const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
             setNextPost(`Em ${hours}h ${minutes}m`);
@@ -130,9 +187,12 @@ export default function Home() {
   };
 
   const handleToggleSchedule = (id: number) => {
-    setSchedules(prev => prev.map(s => 
-      s.id === id ? { ...s, enabled: !s.enabled } : s
-    ));
+    setSchedules(prev => {
+      const newSchedules = prev.map(s => 
+        s.id === id ? { ...s, enabled: !s.enabled } : s
+      );
+      return newSchedules;
+    });
   };
 
   const handleUpdateTime = (id: number, time: string) => {
@@ -159,7 +219,6 @@ export default function Home() {
       return;
     }
 
-    // Deactivate bot
     if (isActive) {
       if (botRef.current) {
         botRef.current.stop();
@@ -172,7 +231,6 @@ export default function Home() {
       return;
     }
 
-    // Activate bot
     setIsLoading(true);
     try {
       const config: BotConfig = {
@@ -190,11 +248,9 @@ export default function Home() {
       botRef.current = bot;
       setIsActive(true);
       
-      // Get artworks
       const fetchedArtworks = bot.getArtworks();
       setArtworks(fetchedArtworks);
 
-      // Get status
       const status = bot.getStatus();
       if (status.nextPost) {
         const next = new Date(status.nextPost);
@@ -231,7 +287,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
       <header className="border-b-4 border-primary">
         <div className="container py-6">
@@ -355,41 +411,14 @@ export default function Home() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {schedules.map((schedule) => (
-                  <div 
-                    key={`schedule-${schedule.id}`}
-                    className={`p-4 border-2 rounded-lg transition-all ${
-                      schedule.enabled 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-border bg-muted/30'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <Label htmlFor={`switch-${schedule.id}`} className="text-base font-semibold cursor-pointer">
-                        Horário {schedule.id}
-                      </Label>
-                      <Switch 
-                        id={`switch-${schedule.id}`}
-                        checked={schedule.enabled}
-                        onCheckedChange={() => handleToggleSchedule(schedule.id)}
-                        disabled={isActive}
-                      />
-                    </div>
-                    <Input
-                      type="time"
-                      value={schedule.time}
-                      onChange={(e) => handleUpdateTime(schedule.id, e.target.value)}
-                      disabled={!schedule.enabled || isActive}
-                      className="border-2 text-base font-mono mb-2"
-                    />
-                    <Input
-                      type="text"
-                      placeholder="Mensagem personalizada (opcional)"
-                      value={schedule.message || ''}
-                      onChange={(e) => handleUpdateMessage(schedule.id, e.target.value)}
-                      disabled={!schedule.enabled || isActive}
-                      className="border-2 text-base"
-                    />
-                  </div>
+                  <ScheduleCard 
+                    key={`schedule-item-${schedule.id}`}
+                    schedule={schedule}
+                    isActive={isActive}
+                    onToggle={handleToggleSchedule}
+                    onUpdateTime={handleUpdateTime}
+                    onUpdateMessage={handleUpdateMessage}
+                  />
                 ))}
               </div>
             </Card>
