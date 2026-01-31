@@ -12,9 +12,9 @@ export interface BlueskySession {
 
 export interface BlueskyPost {
   text: string;
-  imageBlob?: Blob;
-  imageMimeType?: string;
-  imageAlt?: string;
+  blob?: Blob;
+  mimeType?: string;
+  alt?: string;
 }
 
 const BLUESKY_API_URL = "https://bsky.social/xrpc";
@@ -33,7 +33,6 @@ function detectFacets(text: string) {
     const end = start + url.length;
 
     // Bluesky uses byte offsets for facets, not character offsets
-    // We convert string to bytes to get correct offsets
     const textBefore = text.slice(0, start);
     const textMatch = text.slice(start, end);
     
@@ -127,7 +126,7 @@ export async function uploadBlob(
 }
 
 /**
- * Create a post on Bluesky
+ * Create a post on Bluesky with support for Images and Videos
  */
 export async function createPost(
   session: BlueskySession,
@@ -144,19 +143,29 @@ export async function createPost(
       facets: detectFacets(post.text),
     };
 
-    // If there's an image, upload it first and add to embed
-    if (post.imageBlob && post.imageMimeType) {
-      const blobData = await uploadBlob(session, post.imageBlob, post.imageMimeType);
+    // Handle Media (Image or Video)
+    if (post.blob && post.mimeType) {
+      const blobData = await uploadBlob(session, post.blob, post.mimeType);
       
-      record.embed = {
-        $type: "app.bsky.embed.images",
-        images: [
-          {
-            alt: post.imageAlt || post.text,
-            image: blobData,
-          },
-        ],
-      };
+      if (post.mimeType.startsWith("video/")) {
+        // Video Embed
+        record.embed = {
+          $type: "app.bsky.embed.video",
+          video: blobData,
+          alt: post.alt || post.text,
+        };
+      } else {
+        // Image Embed
+        record.embed = {
+          $type: "app.bsky.embed.images",
+          images: [
+            {
+              alt: post.alt || post.text,
+              image: blobData,
+            },
+          ],
+        };
+      }
     }
 
     // Create the post
@@ -178,8 +187,7 @@ export async function createPost(
       throw new Error(error.message || `Post creation failed: ${response.status}`);
     }
 
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
     console.error("Error creating post:", error);
     throw error;
