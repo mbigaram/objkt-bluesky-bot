@@ -1,9 +1,8 @@
 /**
- * Neo-Brutalism Digital Design
- * - Geometria ousada com bordas grossas e sombras duras
- * - Contraste extremo: preto #0A0A0A + verde neon #00FF87 + roxo #8B5CF6
- * - Tipografia: Space Grotesk (display) + Inter (body) + JetBrains Mono (mono)
- * - Layout assimétrico com grid modular
+ * Neo-Brutalism Digital Design - REBRANDED
+ * - Main Color: #fff200 (Yellow)
+ * - Contrast: #0A0A0A (Dark)
+ * - Shadows: Hard, dark, solid
  */
 
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
-import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, ExternalLink, Trash2, Heart } from "lucide-react";
+import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, ExternalLink, Trash2, Heart, Copy, Maximize2, X } from "lucide-react";
 import { ObjktBlueskyBot, BotConfig } from "@/lib/bot";
 import { ObjktArtwork } from "@/lib/objkt";
 
@@ -31,11 +30,10 @@ const DEFAULT_SCHEDULES: ScheduleTime[] = [
   { id: 4, time: "21:00", enabled: true },
 ];
 
-// Arte de Doação (QR Codes Tezos)
 const DONATION_ART_URL = "https://ipfs.io/ipfs/bafybeie2otqlyx5p5pqfew464h5rutibrvrnnpcxkw6yzdoi5w2zu2rqvi";
+const TEZOS_WALLET_1 = "KT1KGfgDo5q85tsvVcxyCYDhjtdo7382EJ1Q"; // Endereço do contrato da arte
 
 export default function Home() {
-  // Configuration state
   const [tezosAddress, setTezosAddress] = useState("");
   const [blueskyHandle, setBlueskyHandle] = useState("");
   const [blueskyPassword, setBlueskyPassword] = useState("");
@@ -43,7 +41,6 @@ export default function Home() {
   const [profileUrl, setProfileUrl] = useState("");
   const [schedules, setSchedules] = useState<ScheduleTime[]>(DEFAULT_SCHEDULES);
 
-  // Bot state
   const [isConfigured, setIsConfigured] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,10 +48,10 @@ export default function Home() {
   const [nextPost, setNextPost] = useState<string>("");
   const [totalPosts, setTotalPosts] = useState(0);
   const [lastPost, setLastPost] = useState<Date | null>(null);
+  const [isZoomed, setIsZoomed] = useState(false);
 
   const botRef = useRef<ObjktBlueskyBot | null>(null);
 
-  // Load saved configuration from SessionStorage
   useEffect(() => {
     const savedConfig = sessionStorage.getItem("botConfig");
     if (savedConfig) {
@@ -65,15 +62,8 @@ export default function Home() {
         if (config.blueskyPassword) setBlueskyPassword(config.blueskyPassword);
         if (config.customMessage) setCustomMessage(config.customMessage);
         if (config.profileUrl) setProfileUrl(config.profileUrl);
-        
         if (config.schedules && Array.isArray(config.schedules)) {
-          const cleanSchedules = config.schedules.map((s: any, index: number) => ({
-            id: (s && typeof s.id === 'number' && !isNaN(s.id)) ? s.id : (index + 1),
-            time: s?.time || "12:00",
-            enabled: !!s?.enabled,
-            message: s?.message || ""
-          }));
-          setSchedules(cleanSchedules.length > 0 ? cleanSchedules : DEFAULT_SCHEDULES);
+          setSchedules(config.schedules);
         }
         setIsConfigured(true);
       } catch (error) {
@@ -82,7 +72,6 @@ export default function Home() {
     }
   }, []);
 
-  // Update next post time display
   useEffect(() => {
     if (isActive && botRef.current) {
       const interval = setInterval(() => {
@@ -91,15 +80,10 @@ export default function Home() {
           const now = new Date();
           const next = new Date(status.nextPost);
           const diff = next.getTime() - now.getTime();
-          
-          if (diff < 24 * 60 * 60 * 1000 && diff > 0) {
+          if (diff > 0) {
             const hours = Math.floor(diff / (60 * 60 * 1000));
             const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
             setNextPost(`Em ${hours}h ${minutes}m`);
-          } else if (diff > 0) {
-            setNextPost(next.toLocaleDateString("pt-BR", { 
-              day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" 
-            }));
           }
         }
         if (status?.lastPost) setLastPost(new Date(status.lastPost));
@@ -117,26 +101,23 @@ export default function Home() {
     const config = { tezosAddress, blueskyHandle, blueskyPassword, customMessage, profileUrl, schedules };
     sessionStorage.setItem("botConfig", JSON.stringify(config));
     setIsConfigured(true);
-    toast.success("Configuração salva na sessão!");
+    toast.success("Configuração salva!");
   };
 
   const handleClearData = () => {
     if (isActive) {
-      toast.error("Desative o bot antes de limpar os dados");
+      toast.error("Desative o bot primeiro");
       return;
     }
-    if (confirm("Deseja realmente apagar todas as configurações?")) {
+    if (confirm("Apagar todos os dados da sessão?")) {
       sessionStorage.removeItem("botConfig");
-      setTezosAddress("");
-      setBlueskyHandle("");
-      setBlueskyPassword("");
-      setCustomMessage("Good morning! ☀️");
-      setProfileUrl("");
-      setSchedules(DEFAULT_SCHEDULES);
-      setIsConfigured(false);
-      setArtworks([]);
-      toast.success("Dados apagados!");
+      window.location.reload();
     }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copiado!`);
   };
 
   const updateScheduleField = (id: number, field: keyof ScheduleTime, value: any) => {
@@ -144,24 +125,11 @@ export default function Home() {
   };
 
   const handleActivateBot = async () => {
-    if (!isConfigured) {
-      toast.error("Configure o bot primeiro");
-      return;
-    }
-    const enabledSchedules = schedules.filter(s => s.enabled);
-    if (enabledSchedules.length === 0) {
-      toast.error("Ative pelo menos um horário");
-      return;
-    }
     if (isActive) {
-      if (botRef.current) {
-        botRef.current.stop();
-        botRef.current = null;
-      }
+      botRef.current?.stop();
+      botRef.current = null;
       setIsActive(false);
       setArtworks([]);
-      setNextPost("");
-      toast.success("Bot desativado");
       return;
     }
     setIsLoading(true);
@@ -172,53 +140,54 @@ export default function Home() {
       botRef.current = bot;
       setIsActive(true);
       setArtworks(bot.getArtworks());
-      const status = bot.getStatus();
-      if (status.nextPost) {
-        const next = new Date(status.nextPost);
-        setNextPost(next.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
-      }
-      toast.success("Bot ativado! 🚀");
+      toast.success("Bot iniciado!");
     } catch (error) {
-      toast.error(`Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`);
+      toast.error(`Erro: ${error instanceof Error ? error.message : "Falha ao iniciar"}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleTestPost = async (artworkId: string) => {
-    if (!botRef.current) {
-      toast.error("Bot não está ativo");
-      return;
-    }
+    if (!botRef.current) return;
     setIsLoading(true);
     try {
       await botRef.current.postArtwork(artworkId);
-      toast.success("Post enviado com sucesso!");
+      toast.success("Post de teste enviado!");
     } catch (error) {
-      toast.error(`Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`);
+      toast.error("Erro no post de teste");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b-4 border-primary">
+    <div className="min-h-screen bg-[#0A0A0A] text-white font-sans selection:bg-[#fff200] selection:text-black">
+      {/* Lightbox / Zoom Modal */}
+      {isZoomed && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setIsZoomed(false)}>
+          <Button className="absolute top-6 right-6 bg-[#fff200] text-black border-2 border-black hover:bg-white" onClick={() => setIsZoomed(false)}>
+            <X className="w-6 h-6" />
+          </Button>
+          <img src={DONATION_ART_URL} alt="Zoomed Donation Art" className="max-w-full max-h-full border-4 border-[#fff200] shadow-[20px_20px_0px_0px_rgba(255,242,0,0.3)]" />
+        </div>
+      )}
+
+      <header className="border-b-4 border-[#fff200] bg-[#0A0A0A] sticky top-0 z-50">
         <div className="container py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-primary mb-1">objkt → Bluesky Bot</h1>
-              <p className="text-muted-foreground">Automatize suas postagens de arte NFT</p>
+              <h1 className="text-4xl font-black text-[#fff200] italic uppercase tracking-tighter">objkt <span className="text-white">→</span> Bluesky</h1>
+              <p className="text-[#fff200]/70 font-mono text-xs mt-1">v2.0 // NEO-BRUTALIST AUTOMATION</p>
             </div>
             <div className="flex items-center gap-4">
-              <Button variant="outline" size="sm" onClick={handleClearData} className="border-2 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">
-                <Trash2 className="w-4 h-4 mr-2" />
-                Limpar Dados
+              <Button variant="outline" size="sm" onClick={handleClearData} className="border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all font-bold uppercase text-xs">
+                <Trash2 className="w-4 h-4 mr-2" /> Limpar Dados
               </Button>
               {isActive && (
-                <div className="flex items-center gap-2 bg-primary/10 border-2 border-primary px-4 py-2 rounded-lg">
-                  <Activity className="w-5 h-5 text-primary animate-pulse" />
-                  <span className="font-semibold text-primary">ATIVO</span>
+                <div className="flex items-center gap-2 bg-[#fff200] border-2 border-black px-4 py-2 rounded-none shadow-[4px_4px_0px_0px_rgba(255,242,0,0.4)]">
+                  <Activity className="w-5 h-5 text-black animate-pulse" />
+                  <span className="font-black text-black text-sm">LIVE</span>
                 </div>
               )}
             </div>
@@ -227,140 +196,148 @@ export default function Home() {
       </header>
 
       <main className="container py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            {/* Seção de Doação / Apoio */}
-            <Card className="p-6 border-4 border-purple-500 bg-purple-500/5 brutal-shadow-purple overflow-hidden">
-              <div className="flex flex-col md:flex-row gap-6 items-center">
-                <div className="flex-shrink-0 w-full md:w-1/3">
-                  <div className="border-4 border-purple-500 rounded-lg overflow-hidden shadow-[8px_8px_0px_0px_rgba(139,92,246,1)]">
-                    <img 
-                      src={DONATION_ART_URL} 
-                      alt="Donation QR Codes" 
-                      className="w-full h-auto object-cover"
-                    />
-                  </div>
-                </div>
-                <div className="flex-1 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Heart className="w-6 h-6 text-purple-500 fill-purple-500" />
-                    <h2 className="text-2xl font-bold text-purple-500">Apoie o Projeto</h2>
-                  </div>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Este bot foi criado para facilitar a vida dos artistas na comunidade Tezos. 
-                    Se ele está sendo útil para você, considere fazer uma doação sutil para apoiar o desenvolvimento contínuo. 
-                    Os <strong>QR Codes</strong> na imagem ao lado levam diretamente aos meus endereços Tezos. 
-                    Toda contribuição é imensamente apreciada!
-                  </p>
-                  <div className="flex gap-2">
-                    <span className="px-3 py-1 bg-purple-500/20 text-purple-600 text-xs font-bold rounded-full border border-purple-500/30">
-                      TEZOS ARTISTS
-                    </span>
-                    <span className="px-3 py-1 bg-purple-500/20 text-purple-600 text-xs font-bold rounded-full border border-purple-500/30">
-                      OPEN SOURCE
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 border-4 border-border bg-card brutal-shadow">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-                  <Settings className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <h2 className="text-2xl font-bold">Configuração de APIs</h2>
-              </div>
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="tezos">Endereço Tezos (objkt.com)</Label>
-                  <Input id="tezos" value={tezosAddress} onChange={(e) => setTezosAddress(e.target.value)} placeholder="tz1..." className="font-mono border-2" disabled={isActive} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bluesky-handle">Handle do Bluesky</Label>
-                  <Input id="bluesky-handle" value={blueskyHandle} onChange={(e) => setBlueskyHandle(e.target.value)} placeholder="seu-handle.bsky.social" className="border-2" disabled={isActive} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bluesky-password">Senha/App Password do Bluesky</Label>
-                  <Input id="bluesky-password" type="password" value={blueskyPassword} onChange={(e) => setBlueskyPassword(e.target.value)} placeholder="••••••••••••" className="border-2" disabled={isActive} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="profile-url">URL do Seu Perfil</Label>
-                  <Input id="profile-url" value={profileUrl} onChange={(e) => setProfileUrl(e.target.value)} placeholder="https://objkt.com/profile/..." className="border-2" disabled={isActive} />
-                </div>
-                <Button onClick={handleSaveConfig} disabled={isActive} className="w-full h-12 text-base font-bold border-4 border-primary bg-primary text-primary-foreground brutal-shadow-hover transition-all">
-                  Salvar na Sessão
-                </Button>
-              </div>
-            </Card>
-
-            <Card className="p-6 border-4 border-border bg-card brutal-shadow">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-secondary-foreground" />
-                </div>
-                <h2 className="text-2xl font-bold">Horários de Postagem</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {schedules.map((s) => (
-                  <div key={`card-${s.id}`} className={`p-4 border-2 rounded-lg transition-all ${s.enabled ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'}`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-base font-semibold">Horário {s.id}</span>
-                      <Switch checked={s.enabled} onCheckedChange={(val) => updateScheduleField(s.id, 'enabled', val)} disabled={isActive} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          <div className="lg:col-span-2 space-y-10">
+            {/* Donation Section - Purple Style Preserved */}
+            <Card className="p-8 border-4 border-purple-500 bg-purple-500/5 shadow-[10px_10px_0px_0px_rgba(139,92,246,1)] rounded-none relative overflow-hidden group">
+              <div className="flex flex-col md:flex-row gap-8 items-center">
+                <div className="flex-shrink-0 w-full md:w-2/5 relative">
+                  <div 
+                    className="border-4 border-purple-500 bg-black cursor-zoom-in relative group"
+                    onClick={() => setIsZoomed(true)}
+                  >
+                    <img src={DONATION_ART_URL} alt="Donation QR Codes" className="w-full h-auto object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                    <div className="absolute inset-0 bg-purple-500/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                      <Maximize2 className="w-10 h-10 text-white drop-shadow-lg" />
                     </div>
-                    <Input type="time" value={s.time} onChange={(e) => updateScheduleField(s.id, 'time', e.target.value)} disabled={!s.enabled || isActive} className="border-2 font-mono mb-2" />
-                    <Input type="text" placeholder="Mensagem (opcional)" value={s.message || ''} onChange={(e) => updateScheduleField(s.id, 'message', e.target.value)} disabled={!s.enabled || isActive} className="border-2" />
+                  </div>
+                  <p className="text-[10px] text-purple-400 font-mono mt-2 text-center uppercase tracking-widest">Clique para ampliar os QR Codes</p>
+                </div>
+                <div className="flex-1 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <Heart className="w-8 h-8 text-purple-500 fill-purple-500" />
+                    <h2 className="text-3xl font-black text-white uppercase italic">Support Art</h2>
+                  </div>
+                  <p className="text-purple-100/80 leading-relaxed font-medium">
+                    Este bot é uma ferramenta gratuita para a comunidade Tezos. Se ele te ajuda a economizar tempo, considere apoiar o desenvolvedor. Escaneie os QR codes ou copie os endereços abaixo:
+                  </p>
+                  <div className="space-y-3">
+                    <Button 
+                      onClick={() => copyToClipboard(TEZOS_WALLET_1, "Endereço")}
+                      className="w-full justify-between bg-purple-500 hover:bg-white hover:text-purple-500 text-white font-bold border-2 border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all"
+                    >
+                      <span>COPIAR ENDEREÇO TEZOS</span>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Config Section - Yellow Rebrand */}
+            <Card className="p-8 border-4 border-[#fff200] bg-[#111] shadow-[12px_12px_0px_0px_rgba(255,242,0,1)] rounded-none">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-14 h-14 bg-[#fff200] flex items-center justify-center border-4 border-black">
+                  <Settings className="w-7 h-7 text-black" />
+                </div>
+                <h2 className="text-3xl font-black uppercase italic text-white">Configurações</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">Endereço Tezos</Label>
+                  <Input value={tezosAddress} onChange={(e) => setTezosAddress(e.target.value)} placeholder="tz1..." className="bg-black border-2 border-[#fff200] text-white rounded-none h-12 focus:ring-0" disabled={isActive} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">Handle Bluesky</Label>
+                  <Input value={blueskyHandle} onChange={(e) => setBlueskyHandle(e.target.value)} placeholder="user.bsky.social" className="bg-black border-2 border-[#fff200] text-white rounded-none h-12 focus:ring-0" disabled={isActive} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">App Password</Label>
+                  <Input type="password" value={blueskyPassword} onChange={(e) => setBlueskyPassword(e.target.value)} placeholder="••••-••••-••••-••••" className="bg-black border-2 border-[#fff200] text-white rounded-none h-12 focus:ring-0" disabled={isActive} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">URL do Perfil (Link no Post)</Label>
+                  <Input value={profileUrl} onChange={(e) => setProfileUrl(e.target.value)} placeholder="objkt.com/profile/..." className="bg-black border-2 border-[#fff200] text-white rounded-none h-12 focus:ring-0" disabled={isActive} />
+                </div>
+              </div>
+              <Button onClick={handleSaveConfig} disabled={isActive} className="w-full mt-8 h-14 bg-[#fff200] text-black font-black text-lg border-4 border-black rounded-none shadow-[6px_6px_0px_0px_rgba(255,242,0,0.3)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all uppercase italic">
+                Salvar Configurações
+              </Button>
+            </Card>
+
+            {/* Schedules Section */}
+            <Card className="p-8 border-4 border-white bg-[#111] shadow-[12px_12px_0px_0px_rgba(255,255,255,1)] rounded-none">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-14 h-14 bg-white flex items-center justify-center border-4 border-black">
+                  <Clock className="w-7 h-7 text-black" />
+                </div>
+                <h2 className="text-3xl font-black uppercase italic text-white">Cronograma</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {schedules.map((s) => (
+                  <div key={`s-${s.id}`} className={`p-6 border-4 transition-all ${s.enabled ? 'border-[#fff200] bg-[#fff200]/5 shadow-[6px_6px_0px_0px_rgba(255,242,0,1)]' : 'border-[#333] bg-black opacity-50'}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="font-black text-white italic">HORÁRIO {s.id}</span>
+                      <Switch checked={s.enabled} onCheckedChange={(val) => updateScheduleField(s.id, 'enabled', val)} disabled={isActive} className="data-[state=checked]:bg-[#fff200]" />
+                    </div>
+                    <Input type="time" value={s.time} onChange={(e) => updateScheduleField(s.id, 'time', e.target.value)} disabled={!s.enabled || isActive} className="bg-black border-2 border-white/20 text-white font-mono mb-4 rounded-none h-12" />
+                    <Input placeholder="Mensagem personalizada..." value={s.message || ''} onChange={(e) => updateScheduleField(s.id, 'message', e.target.value)} disabled={!s.enabled || isActive} className="bg-black border-2 border-white/20 text-white rounded-none" />
                   </div>
                 ))}
               </div>
             </Card>
           </div>
 
-          <div className="space-y-8">
-            <Card className="p-6 border-4 border-border bg-card brutal-shadow-secondary">
-              <h3 className="text-xl font-bold mb-4">Status do Bot</h3>
-              <Button onClick={handleActivateBot} disabled={!isConfigured || isLoading} className={`w-full h-14 text-lg font-bold border-4 transition-all ${isActive ? 'border-destructive bg-destructive text-destructive-foreground' : 'border-primary bg-primary text-primary-foreground'} brutal-shadow-hover`}>
-                {isLoading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : isActive ? 'Desativar Bot' : 'Ativar Bot'}
+          <div className="space-y-10">
+            {/* Control Panel */}
+            <Card className="p-8 border-4 border-[#fff200] bg-black shadow-[10px_10px_0px_0px_rgba(255,242,0,1)] rounded-none">
+              <h3 className="text-2xl font-black mb-6 uppercase italic text-white">Painel de Controle</h3>
+              <Button 
+                onClick={handleActivateBot} 
+                disabled={!isConfigured || isLoading} 
+                className={`w-full h-20 text-xl font-black border-4 border-black rounded-none transition-all uppercase italic ${isActive ? 'bg-red-600 text-white shadow-[6px_6px_0px_0px_rgba(220,38,38,0.5)]' : 'bg-[#fff200] text-black shadow-[6px_6px_0px_0px_rgba(255,242,0,0.5)]'} hover:shadow-none hover:translate-x-1 hover:translate-y-1`}
+              >
+                {isLoading ? <Loader2 className="w-8 h-8 animate-spin" /> : isActive ? 'Desativar Bot' : 'Ativar Bot'}
               </Button>
+              
               {isActive && (
-                <div className="mt-6 space-y-4">
-                  {nextPost && (
-                    <div className="p-4 bg-primary/10 border-2 border-primary rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-semibold text-primary">Próxima Postagem</span>
-                      </div>
-                      <p className="text-lg font-bold">{nextPost}</p>
+                <div className="mt-8 space-y-6">
+                  <div className="p-5 bg-[#fff200]/10 border-4 border-[#fff200] rounded-none">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="w-5 h-5 text-[#fff200]" />
+                      <span className="text-xs font-black text-[#fff200] uppercase tracking-widest">Next Drop</span>
                     </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-muted/30 border-2 border-border rounded-lg text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Posts</p>
-                      <p className="text-2xl font-bold text-primary">{totalPosts}</p>
+                    <p className="text-3xl font-black text-white italic">{nextPost || "Calculando..."}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-[#111] border-2 border-white/20 text-center">
+                      <p className="text-[10px] text-white/50 font-black uppercase mb-1">Total Posts</p>
+                      <p className="text-3xl font-black text-[#fff200]">{totalPosts}</p>
                     </div>
-                    <div className="p-3 bg-muted/30 border-2 border-border rounded-lg text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Artes</p>
-                      <p className="text-2xl font-bold text-secondary">{artworks.length}</p>
+                    <div className="p-4 bg-[#111] border-2 border-white/20 text-center">
+                      <p className="text-[10px] text-white/50 font-black uppercase mb-1">Artworks</p>
+                      <p className="text-3xl font-black text-white">{artworks.length}</p>
                     </div>
                   </div>
                 </div>
               )}
             </Card>
 
+            {/* Preview Section */}
             {artworks.length > 0 && (
-              <Card className="p-6 border-4 border-border bg-card brutal-shadow-secondary">
-                <div className="flex items-center gap-2 mb-4">
-                  <ImageIcon className="w-5 h-5 text-secondary" />
-                  <h3 className="text-xl font-bold">Suas Artes</h3>
+              <Card className="p-6 border-4 border-white bg-black shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] rounded-none">
+                <div className="flex items-center gap-3 mb-6">
+                  <ImageIcon className="w-6 h-6 text-[#fff200]" />
+                  <h3 className="text-xl font-black uppercase italic">Preview Galeria</h3>
                 </div>
-                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                  {artworks.slice(0, 10).map((artwork) => (
-                    <div key={artwork.id} className="p-3 bg-muted/30 border-2 border-border rounded-lg hover:border-primary transition-all group">
-                      <img src={artwork.thumbnailUrl || artwork.imageUrl} alt={artwork.name} className="w-full h-24 object-cover rounded mb-2" loading="lazy" />
-                      <div className="flex items-center justify-between">
-                        <p className="font-semibold text-xs truncate flex-1">{artwork.name}</p>
-                        <Button size="sm" variant="outline" onClick={() => handleTestPost(artwork.id)} disabled={isLoading} className="ml-2 h-7 w-7 p-0">
-                          <ExternalLink className="w-3 h-3" />
+                <div className="grid grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                  {artworks.slice(0, 12).map((artwork) => (
+                    <div key={artwork.id} className="relative aspect-square border-2 border-white/10 group overflow-hidden">
+                      <img src={artwork.thumbnailUrl || artwork.imageUrl} alt={artwork.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" loading="lazy" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center p-2 transition-all">
+                        <p className="text-[10px] font-black text-center mb-2 line-clamp-2">{artwork.name}</p>
+                        <Button size="sm" onClick={() => handleTestPost(artwork.id)} className="h-8 bg-[#fff200] text-black border-2 border-black rounded-none font-black text-[10px] w-full">
+                          TEST POST
                         </Button>
                       </div>
                     </div>
@@ -372,9 +349,12 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="border-t-4 border-primary mt-20">
-        <div className="container py-8 text-center text-muted-foreground text-sm">
-          Bot desenvolvido para automatizar postagens de arte NFT do objkt.com no Bluesky
+      <footer className="border-t-4 border-[#fff200] bg-black mt-20">
+        <div className="container py-10 flex flex-col md:flex-row justify-between items-center gap-6">
+          <p className="text-[#fff200] font-black italic uppercase tracking-tighter text-xl">objkt → Bluesky</p>
+          <p className="text-white/40 font-mono text-xs uppercase tracking-widest">
+            Made for Tezos Artists // No data stored permanently
+          </p>
         </div>
       </footer>
     </div>
