@@ -24,6 +24,13 @@ interface ScheduleTime {
   message?: string;
 }
 
+const DEFAULT_SCHEDULES: ScheduleTime[] = [
+  { id: 1, time: "09:00", enabled: true },
+  { id: 2, time: "13:00", enabled: true },
+  { id: 3, time: "17:00", enabled: true },
+  { id: 4, time: "21:00", enabled: true },
+];
+
 export default function Home() {
   // Configuration state
   const [tezosAddress, setTezosAddress] = useState("");
@@ -31,14 +38,7 @@ export default function Home() {
   const [blueskyPassword, setBlueskyPassword] = useState("");
   const [customMessage, setCustomMessage] = useState("Good morning! ☀️");
   const [profileUrl, setProfileUrl] = useState("");
-  
-  // Lista inicial de horários - Criada de forma estática
-  const [schedules, setSchedules] = useState<ScheduleTime[]>([
-    { id: 1, time: "09:00", enabled: true },
-    { id: 2, time: "13:00", enabled: true },
-    { id: 3, time: "17:00", enabled: true },
-    { id: 4, time: "21:00", enabled: true },
-  ]);
+  const [schedules, setSchedules] = useState<ScheduleTime[]>(DEFAULT_SCHEDULES);
 
   // Bot state
   const [isConfigured, setIsConfigured] = useState(false);
@@ -62,19 +62,24 @@ export default function Home() {
         if (config.blueskyPassword) setBlueskyPassword(config.blueskyPassword);
         if (config.customMessage) setCustomMessage(config.customMessage);
         if (config.profileUrl) setProfileUrl(config.profileUrl);
+        
         if (config.schedules && Array.isArray(config.schedules)) {
-          // Garante que cada objeto na lista seja uma nova referência
-          const cleanSchedules = config.schedules.map((s: any) => ({
-            id: Number(s.id),
-            time: String(s.time),
-            enabled: Boolean(s.enabled),
-            message: s.message || ""
-          }));
-          setSchedules(cleanSchedules);
+          // Sanitização robusta para evitar NaN e garantir integridade
+          const cleanSchedules = config.schedules.map((s: any, index: number) => {
+            const id = (s && typeof s.id === 'number' && !isNaN(s.id)) ? s.id : (index + 1);
+            return {
+              id: id,
+              time: s?.time || "12:00",
+              enabled: !!s?.enabled,
+              message: s?.message || ""
+            };
+          });
+          setSchedules(cleanSchedules.length > 0 ? cleanSchedules : DEFAULT_SCHEDULES);
         }
         setIsConfigured(true);
       } catch (error) {
         console.error("Error loading config:", error);
+        setSchedules(DEFAULT_SCHEDULES);
       }
     }
   }, []);
@@ -89,11 +94,11 @@ export default function Home() {
           const next = new Date(status.nextPost);
           const diff = next.getTime() - now.getTime();
           
-          if (diff < 24 * 60 * 60 * 1000) {
+          if (diff < 24 * 60 * 60 * 1000 && diff > 0) {
             const hours = Math.floor(diff / (60 * 60 * 1000));
             const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
             setNextPost(`Em ${hours}h ${minutes}m`);
-          } else {
+          } else if (diff > 0) {
             setNextPost(next.toLocaleDateString("pt-BR", { 
               day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" 
             }));
@@ -117,17 +122,8 @@ export default function Home() {
     toast.success("Configuração salva com sucesso!");
   };
 
-  // ATUALIZAÇÃO DE CAMPO - Garantindo imutabilidade total
   const updateScheduleField = (id: number, field: keyof ScheduleTime, value: any) => {
-    setSchedules(prev => {
-      // Cria um novo array e novos objetos para garantir que o React detecte a mudança individualmente
-      return prev.map(s => {
-        if (s.id === id) {
-          return { ...s, [field]: value };
-        }
-        return { ...s }; // Retorna uma nova referência mesmo para os não alterados para evitar bugs de memória
-      });
-    });
+    setSchedules(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
   };
 
   const handleActivateBot = async () => {
