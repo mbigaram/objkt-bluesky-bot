@@ -31,7 +31,7 @@ const DEFAULT_SCHEDULES: ScheduleTime[] = [
 ];
 
 const DONATION_ART_URL = "https://ipfs.io/ipfs/bafybeie2otqlyx5p5pqfew464h5rutibrvrnnpcxkw6yzdoi5w2zu2rqvi";
-const TEZOS_WALLET_1 = "KT1KGfgDo5q85tsvVcxyCYDhjtdo7382EJ1Q"; // Endereço do contrato da arte
+const TEZOS_WALLET_1 = "tz1RYMi13Yp4tmZ9ibt2yX9G7XC7qkEz31tg"; // Endereço pessoal do usuário
 
 export default function Home() {
   const [tezosAddress, setTezosAddress] = useState("");
