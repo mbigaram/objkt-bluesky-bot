@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
-import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, ExternalLink, Trash2 } from "lucide-react";
+import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, ExternalLink, Trash2, Heart } from "lucide-react";
 import { ObjktBlueskyBot, BotConfig } from "@/lib/bot";
 import { ObjktArtwork } from "@/lib/objkt";
 
@@ -30,6 +30,9 @@ const DEFAULT_SCHEDULES: ScheduleTime[] = [
   { id: 3, time: "17:00", enabled: true },
   { id: 4, time: "21:00", enabled: true },
 ];
+
+// Arte de Doação (QR Codes Tezos)
+const DONATION_ART_URL = "https://ipfs.io/ipfs/bafybeie2otqlyx5p5pqfew464h5rutibrvrnnpcxkw6yzdoi5w2zu2rqvi";
 
 export default function Home() {
   // Configuration state
@@ -51,7 +54,7 @@ export default function Home() {
 
   const botRef = useRef<ObjktBlueskyBot | null>(null);
 
-  // Load saved configuration from SessionStorage (more secure, clears on tab close)
+  // Load saved configuration from SessionStorage
   useEffect(() => {
     const savedConfig = sessionStorage.getItem("botConfig");
     if (savedConfig) {
@@ -122,10 +125,8 @@ export default function Home() {
       toast.error("Desative o bot antes de limpar os dados");
       return;
     }
-    
-    if (confirm("Deseja realmente apagar todas as configurações? Esta ação não pode ser desfeita.")) {
+    if (confirm("Deseja realmente apagar todas as configurações?")) {
       sessionStorage.removeItem("botConfig");
-      localStorage.removeItem("botConfig"); // Limpa o antigo também por segurança
       setTezosAddress("");
       setBlueskyHandle("");
       setBlueskyPassword("");
@@ -134,7 +135,7 @@ export default function Home() {
       setSchedules(DEFAULT_SCHEDULES);
       setIsConfigured(false);
       setArtworks([]);
-      toast.success("Todos os dados foram apagados!");
+      toast.success("Dados apagados!");
     }
   };
 
@@ -210,12 +211,7 @@ export default function Home() {
               <p className="text-muted-foreground">Automatize suas postagens de arte NFT</p>
             </div>
             <div className="flex items-center gap-4">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleClearData}
-                className="border-2 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all"
-              >
+              <Button variant="outline" size="sm" onClick={handleClearData} className="border-2 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">
                 <Trash2 className="w-4 h-4 mr-2" />
                 Limpar Dados
               </Button>
@@ -233,6 +229,41 @@ export default function Home() {
       <main className="container py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
+            {/* Seção de Doação / Apoio */}
+            <Card className="p-6 border-4 border-purple-500 bg-purple-500/5 brutal-shadow-purple overflow-hidden">
+              <div className="flex flex-col md:flex-row gap-6 items-center">
+                <div className="flex-shrink-0 w-full md:w-1/3">
+                  <div className="border-4 border-purple-500 rounded-lg overflow-hidden shadow-[8px_8px_0px_0px_rgba(139,92,246,1)]">
+                    <img 
+                      src={DONATION_ART_URL} 
+                      alt="Donation QR Codes" 
+                      className="w-full h-auto object-cover"
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Heart className="w-6 h-6 text-purple-500 fill-purple-500" />
+                    <h2 className="text-2xl font-bold text-purple-500">Apoie o Projeto</h2>
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Este bot foi criado para facilitar a vida dos artistas na comunidade Tezos. 
+                    Se ele está sendo útil para você, considere fazer uma doação sutil para apoiar o desenvolvimento contínuo. 
+                    Os <strong>QR Codes</strong> na imagem ao lado levam diretamente aos meus endereços Tezos. 
+                    Toda contribuição é imensamente apreciada!
+                  </p>
+                  <div className="flex gap-2">
+                    <span className="px-3 py-1 bg-purple-500/20 text-purple-600 text-xs font-bold rounded-full border border-purple-500/30">
+                      TEZOS ARTISTS
+                    </span>
+                    <span className="px-3 py-1 bg-purple-500/20 text-purple-600 text-xs font-bold rounded-full border border-purple-500/30">
+                      OPEN SOURCE
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
             <Card className="p-6 border-4 border-border bg-card brutal-shadow">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
@@ -275,27 +306,10 @@ export default function Home() {
                   <div key={`card-${s.id}`} className={`p-4 border-2 rounded-lg transition-all ${s.enabled ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'}`}>
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-base font-semibold">Horário {s.id}</span>
-                      <Switch 
-                        checked={s.enabled} 
-                        onCheckedChange={(val) => updateScheduleField(s.id, 'enabled', val)} 
-                        disabled={isActive} 
-                      />
+                      <Switch checked={s.enabled} onCheckedChange={(val) => updateScheduleField(s.id, 'enabled', val)} disabled={isActive} />
                     </div>
-                    <Input 
-                      type="time" 
-                      value={s.time} 
-                      onChange={(e) => updateScheduleField(s.id, 'time', e.target.value)} 
-                      disabled={!s.enabled || isActive} 
-                      className="border-2 font-mono mb-2" 
-                    />
-                    <Input 
-                      type="text" 
-                      placeholder="Mensagem (opcional)" 
-                      value={s.message || ''} 
-                      onChange={(e) => updateScheduleField(s.id, 'message', e.target.value)} 
-                      disabled={!s.enabled || isActive} 
-                      className="border-2" 
-                    />
+                    <Input type="time" value={s.time} onChange={(e) => updateScheduleField(s.id, 'time', e.target.value)} disabled={!s.enabled || isActive} className="border-2 font-mono mb-2" />
+                    <Input type="text" placeholder="Mensagem (opcional)" value={s.message || ''} onChange={(e) => updateScheduleField(s.id, 'message', e.target.value)} disabled={!s.enabled || isActive} className="border-2" />
                   </div>
                 ))}
               </div>
