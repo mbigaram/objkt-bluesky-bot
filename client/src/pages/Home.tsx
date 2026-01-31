@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
-import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, ExternalLink } from "lucide-react";
+import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, ExternalLink, Trash2 } from "lucide-react";
 import { ObjktBlueskyBot, BotConfig } from "@/lib/bot";
 import { ObjktArtwork } from "@/lib/objkt";
 
@@ -51,9 +51,9 @@ export default function Home() {
 
   const botRef = useRef<ObjktBlueskyBot | null>(null);
 
-  // Load saved configuration
+  // Load saved configuration from SessionStorage (more secure, clears on tab close)
   useEffect(() => {
-    const savedConfig = localStorage.getItem("botConfig");
+    const savedConfig = sessionStorage.getItem("botConfig");
     if (savedConfig) {
       try {
         const config = JSON.parse(savedConfig);
@@ -64,22 +64,17 @@ export default function Home() {
         if (config.profileUrl) setProfileUrl(config.profileUrl);
         
         if (config.schedules && Array.isArray(config.schedules)) {
-          // Sanitização robusta para evitar NaN e garantir integridade
-          const cleanSchedules = config.schedules.map((s: any, index: number) => {
-            const id = (s && typeof s.id === 'number' && !isNaN(s.id)) ? s.id : (index + 1);
-            return {
-              id: id,
-              time: s?.time || "12:00",
-              enabled: !!s?.enabled,
-              message: s?.message || ""
-            };
-          });
+          const cleanSchedules = config.schedules.map((s: any, index: number) => ({
+            id: (s && typeof s.id === 'number' && !isNaN(s.id)) ? s.id : (index + 1),
+            time: s?.time || "12:00",
+            enabled: !!s?.enabled,
+            message: s?.message || ""
+          }));
           setSchedules(cleanSchedules.length > 0 ? cleanSchedules : DEFAULT_SCHEDULES);
         }
         setIsConfigured(true);
       } catch (error) {
         console.error("Error loading config:", error);
-        setSchedules(DEFAULT_SCHEDULES);
       }
     }
   }, []);
@@ -117,9 +112,30 @@ export default function Home() {
       return;
     }
     const config = { tezosAddress, blueskyHandle, blueskyPassword, customMessage, profileUrl, schedules };
-    localStorage.setItem("botConfig", JSON.stringify(config));
+    sessionStorage.setItem("botConfig", JSON.stringify(config));
     setIsConfigured(true);
-    toast.success("Configuração salva com sucesso!");
+    toast.success("Configuração salva na sessão!");
+  };
+
+  const handleClearData = () => {
+    if (isActive) {
+      toast.error("Desative o bot antes de limpar os dados");
+      return;
+    }
+    
+    if (confirm("Deseja realmente apagar todas as configurações? Esta ação não pode ser desfeita.")) {
+      sessionStorage.removeItem("botConfig");
+      localStorage.removeItem("botConfig"); // Limpa o antigo também por segurança
+      setTezosAddress("");
+      setBlueskyHandle("");
+      setBlueskyPassword("");
+      setCustomMessage("Good morning! ☀️");
+      setProfileUrl("");
+      setSchedules(DEFAULT_SCHEDULES);
+      setIsConfigured(false);
+      setArtworks([]);
+      toast.success("Todos os dados foram apagados!");
+    }
   };
 
   const updateScheduleField = (id: number, field: keyof ScheduleTime, value: any) => {
@@ -193,12 +209,23 @@ export default function Home() {
               <h1 className="text-4xl font-bold text-primary mb-1">objkt → Bluesky Bot</h1>
               <p className="text-muted-foreground">Automatize suas postagens de arte NFT</p>
             </div>
-            {isActive && (
-              <div className="flex items-center gap-2 bg-primary/10 border-2 border-primary px-4 py-2 rounded-lg">
-                <Activity className="w-5 h-5 text-primary animate-pulse" />
-                <span className="font-semibold text-primary">ATIVO</span>
-              </div>
-            )}
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleClearData}
+                className="border-2 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Limpar Dados
+              </Button>
+              {isActive && (
+                <div className="flex items-center gap-2 bg-primary/10 border-2 border-primary px-4 py-2 rounded-lg">
+                  <Activity className="w-5 h-5 text-primary animate-pulse" />
+                  <span className="font-semibold text-primary">ATIVO</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -231,7 +258,7 @@ export default function Home() {
                   <Input id="profile-url" value={profileUrl} onChange={(e) => setProfileUrl(e.target.value)} placeholder="https://objkt.com/profile/..." className="border-2" disabled={isActive} />
                 </div>
                 <Button onClick={handleSaveConfig} disabled={isActive} className="w-full h-12 text-base font-bold border-4 border-primary bg-primary text-primary-foreground brutal-shadow-hover transition-all">
-                  Salvar Configuração
+                  Salvar na Sessão
                 </Button>
               </div>
             </Card>
