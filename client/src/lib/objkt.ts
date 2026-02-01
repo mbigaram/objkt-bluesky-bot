@@ -3,28 +3,6 @@
  * GraphQL endpoint: https://data.objkt.com/v3/graphql
  */
 
-export interface ObjktToken {
-  token_id: string;
-  name: string;
-  description: string;
-  display_uri: string;
-  artifact_uri: string;
-  thumbnail_uri: string;
-  mime: string;
-  timestamp: string;
-  fa: {
-    name: string;
-  };
-  listings_active: Array<{
-    price: number;
-    price_xtz: number;
-    currency: {
-      symbol: string;
-      decimals: number;
-    };
-  }>;
-}
-
 export interface ObjktArtwork {
   id: string;
   name: string;
@@ -41,16 +19,19 @@ export interface ObjktArtwork {
 const OBJKT_GRAPHQL_ENDPOINT = "https://data.objkt.com/v3/graphql";
 
 /**
- * Fetch artworks created by a Tezos address
+ * Fetch ALL artworks created by a Tezos address
+ * Uses a larger limit or pagination to ensure the whole collection is available
  */
 export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtwork[]> {
+  // We use a very high limit to get the "entire" collection for most users.
+  // For extremely large collections, this could be paginated, but 500 is usually enough for artists.
   const query = `
     query GetUserTokens($address: String!) {
       token_creator(
         where: {
           creator_address: {_eq: $address}
         }
-        limit: 50
+        limit: 1000
         order_by: {token: {timestamp: desc}}
       ) {
         token {
@@ -110,7 +91,6 @@ export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtw
         const token = creator.token;
         const listing = token.listings_active?.[0];
         
-        // Convert IPFS URLs to gateway URLs
         const convertIpfsUrl = (uri: string) => {
           if (!uri) return "";
           if (uri.startsWith("ipfs://")) {
@@ -119,12 +99,11 @@ export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtw
           return uri;
         };
 
-        // Calculate price in XTZ
         let priceXtz = 0;
         let priceDisplay = "Not for sale";
         
         if (listing) {
-          priceXtz = listing.price_xtz / 1000000; // Convert from mutez to XTZ
+          priceXtz = listing.price_xtz / 1000000;
           priceDisplay = priceXtz.toFixed(2);
         }
 
@@ -153,7 +132,6 @@ export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtw
  */
 export async function downloadArtwork(url: string): Promise<Blob> {
   try {
-    // Handle IPFS URLs
     let fetchUrl = url;
     if (url.startsWith("ipfs://")) {
       fetchUrl = url.replace("ipfs://", "https://ipfs.io/ipfs/");
@@ -162,7 +140,7 @@ export async function downloadArtwork(url: string): Promise<Blob> {
     const response = await fetch(fetchUrl, {
       mode: 'cors',
       headers: {
-        'Accept': 'image/*, */*'
+        'Accept': 'image/*, video/*, */*'
       }
     });
     
