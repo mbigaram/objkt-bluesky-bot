@@ -175,7 +175,7 @@ export default function Home() {
               <img 
                 src={DONATION_ART_URL} 
                 alt="Left QR Code Zoom" 
-                className="absolute w-[250%] max-w-none left-[-20%] top-[-100%]" 
+                className="absolute w-[210%] max-w-none left-[-5%] bottom-[-5%]" 
               />
             </div>
             <p className="text-center text-white font-bold max-w-sm">Escanear o QR code acima para realizar sua doação via Tezos.</p>
