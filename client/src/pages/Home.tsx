@@ -1,5 +1,5 @@
 /**
- * Neo-Brutalist Design - ORIGINAL STYLE RESTORED
+ * Neo-Brutalist Design - ENGLISH VERSION
  * - Colors: #fff200 (Yellow), #ff6b00 (Orange)
  * - Style: Hard edges, black borders, solid shadows
  */
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
-import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, Trash2, Heart, Copy, Maximize2, X } from "lucide-react";
+import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, Trash2, Heart, Copy, Maximize2, X, ExternalLink } from "lucide-react";
 import { ObjktBlueskyBot, BotConfig } from "@/lib/bot";
 import { ObjktArtwork } from "@/lib/objkt";
 
@@ -31,6 +31,7 @@ const DEFAULT_SCHEDULES: ScheduleTime[] = [
 
 const DONATION_ART_URL = "https://ipfs.io/ipfs/bafybeie2otqlyx5p5pqfew464h5rutibrvrnnpcxkw6yzdoi5w2zu2rqvi";
 const QR_CODE_ONLY_URL = "https://github.com/user-attachments/assets/4758e44e-c573-4546-9c9a-d5dd62ebbb7c";
+const SOCIAL_ART_URL = "https://github.com/user-attachments/assets/e6184885-3e67-4153-a5c8-b6ec01143fb6";
 const TEZOS_WALLET_1 = "tz1RYMi13Yp4tmZ9ibt2yX9G7XC7qkEz31tg";
 
 export default function Home() {
@@ -83,7 +84,7 @@ export default function Home() {
           if (diff > 0) {
             const hours = Math.floor(diff / (60 * 60 * 1000));
             const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
-            setNextPost(`Em ${hours}h ${minutes}m`);
+            setNextPost(`In ${hours}h ${minutes}m`);
           }
         }
         if (status?.lastPost) setLastPost(new Date(status.lastPost));
@@ -95,21 +96,21 @@ export default function Home() {
 
   const handleSaveConfig = () => {
     if (!tezosAddress || !blueskyHandle || !blueskyPassword) {
-      toast.error("Preencha todos os campos obrigatórios");
+      toast.error("Please fill in all required fields");
       return;
     }
     const config = { tezosAddress, blueskyHandle, blueskyPassword, customMessage, profileUrl, schedules };
     sessionStorage.setItem("botConfig", JSON.stringify(config));
     setIsConfigured(true);
-    toast.success("Configuração salva!");
+    toast.success("Settings saved!");
   };
 
   const handleClearData = () => {
     if (isActive) {
-      toast.error("Desative o bot primeiro");
+      toast.error("Please deactivate the bot first");
       return;
     }
-    if (confirm("Apagar todos os dados da sessão?")) {
+    if (confirm("Delete all session data?")) {
       sessionStorage.removeItem("botConfig");
       window.location.reload();
     }
@@ -117,7 +118,7 @@ export default function Home() {
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast.success(`${label} copiado!`);
+    toast.success(`${label} copied!`);
   };
 
   const updateScheduleField = (id: number, field: keyof ScheduleTime, value: any) => {
@@ -140,9 +141,9 @@ export default function Home() {
       botRef.current = bot;
       setIsActive(true);
       setArtworks(bot.getArtworks());
-      toast.success("Bot iniciado!");
+      toast.success("Bot started!");
     } catch (error) {
-      toast.error(`Erro: ${error instanceof Error ? error.message : "Falha ao iniciar"}`);
+      toast.error(`Error: ${error instanceof Error ? error.message : "Failed to start"}`);
     } finally {
       setIsLoading(false);
     }
@@ -153,9 +154,9 @@ export default function Home() {
     setIsLoading(true);
     try {
       await botRef.current.postArtwork(artworkId);
-      toast.success("Post de teste enviado!");
+      toast.success("Test post sent!");
     } catch (error) {
-      toast.error("Erro no post de teste");
+      toast.error("Error in test post");
     } finally {
       setIsLoading(false);
     }
@@ -163,28 +164,27 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white font-sans selection:bg-[#fff200] selection:text-black">
-      {/* Lightbox - FOCUS ON LEFT QR CODE ONLY */}
+      {/* Lightbox - FOCUS ON QR CODE */}
       {isZoomed && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-4 cursor-zoom-out" onClick={() => setIsZoomed(false)}>
           <Button className="absolute top-6 right-6 bg-[#fff200] text-black border-2 border-black hover:bg-white" onClick={() => setIsZoomed(false)}>
             <X className="w-6 h-6" />
           </Button>
           <div className="w-full max-w-2xl flex flex-col items-center gap-8">
-            <h2 className="text-3xl font-black text-[#ff6b00] italic uppercase">QR Code Principal</h2>
-            {/* Show the specific QR code image from README */}
+            <h2 className="text-3xl font-black text-[#ff6b00] italic uppercase tracking-tighter">Support QR Code</h2>
             <div className="relative w-80 h-80 border-8 border-[#ff6b00] bg-white shadow-[0_0_50px_rgba(255,107,0,0.5)]">
               <img 
                 src={QR_CODE_ONLY_URL} 
-                alt="QR Code" 
+                alt="QR Code Zoom" 
                 className="w-full h-full object-contain" 
               />
             </div>
-            <p className="text-center text-white font-bold max-w-sm">Escanear o QR code acima para realizar sua doação via Tezos.</p>
+            <p className="text-center text-white font-bold max-w-sm">Scan the QR code above to support the project via Tezos.</p>
             <Button 
-              onClick={(e) => { e.stopPropagation(); copyToClipboard(TEZOS_WALLET_1, "Endereço"); }} 
-              className="w-full max-w-xs bg-white text-black font-black border-4 border-[#ff6b00] h-14"
+              onClick={(e) => { e.stopPropagation(); copyToClipboard(TEZOS_WALLET_1, "Address"); }} 
+              className="w-full max-w-xs bg-white text-black font-black border-4 border-[#ff6b00] h-14 uppercase italic"
             >
-              COPIAR TZ1...31tg
+              Copy Wallet Address
             </Button>
           </div>
         </div>
@@ -194,16 +194,16 @@ export default function Home() {
         <div className="container py-6 flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-black text-[#fff200] italic uppercase tracking-tighter">objkt <span className="text-white">→</span> Bluesky</h1>
-            <p className="text-[#fff200]/70 font-mono text-[10px] mt-1 uppercase tracking-[0.2em] font-bold">Original Neo-Brutalist Edition</p>
+            <p className="text-[#fff200]/70 font-mono text-[10px] mt-1 uppercase tracking-[0.2em] font-bold">The Ultimate Art Automator</p>
           </div>
           <div className="flex items-center gap-4">
             <Button variant="outline" size="sm" onClick={handleClearData} className="border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all font-black uppercase text-xs rounded-none">
-              <Trash2 className="w-4 h-4 mr-2" /> Limpar
+              <Trash2 className="w-4 h-4 mr-2" /> Clear Data
             </Button>
             {isActive && (
               <div className="flex items-center gap-2 bg-[#fff200] border-2 border-black px-4 py-2 rounded-none shadow-[4px_4px_0px_0px_rgba(255,242,0,0.4)]">
                 <Activity className="w-5 h-5 text-black animate-pulse" />
-                <span className="font-black text-black text-xs uppercase">Online</span>
+                <span className="font-black text-black text-xs uppercase">Bot Active</span>
               </div>
             )}
           </div>
@@ -223,21 +223,21 @@ export default function Home() {
                       <Maximize2 className="w-10 h-10 text-white" />
                     </div>
                   </div>
-                  <p className="text-[10px] text-[#ff6b00] font-black mt-2 text-center uppercase tracking-widest">Clique para ver o QR Code</p>
+                  <p className="text-[10px] text-[#ff6b00] font-black mt-2 text-center uppercase tracking-widest">Click to view QR Code</p>
                 </div>
                 <div className="flex-1 space-y-6">
                   <div className="flex items-center gap-3">
                     <Heart className="w-8 h-8 text-[#ff6b00] fill-[#ff6b00]" />
-                    <h2 className="text-3xl font-black text-white uppercase italic">Apoie o Bot</h2>
+                    <h2 className="text-3xl font-black text-white uppercase italic">Support the Bot</h2>
                   </div>
                   <p className="text-white/80 leading-relaxed font-bold">
-                    O bot agora vasculha todo o seu acervo! Se ele te ajuda, considere apoiar o desenvolvimento. Escaneie o QR code ou copie o endereço abaixo:
+                    This bot automates your entire collection! If it helps you, please consider supporting the development. Scan the QR or copy the address below:
                   </p>
                   <Button 
-                    onClick={() => copyToClipboard(TEZOS_WALLET_1, "Endereço")}
+                    onClick={() => copyToClipboard(TEZOS_WALLET_1, "Address")}
                     className="w-full justify-between bg-[#ff6b00] hover:bg-white hover:text-[#ff6b00] text-black font-black border-4 border-black rounded-none shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all uppercase italic h-14"
                   >
-                    <span>COPIAR TZ1...31TG</span>
+                    <span>COPY TZ1...31TG</span>
                     <Copy className="w-5 h-5" />
                   </Button>
                 </div>
@@ -250,15 +250,15 @@ export default function Home() {
                 <div className="w-14 h-14 bg-[#fff200] flex items-center justify-center border-4 border-black">
                   <Settings className="w-7 h-7 text-black" />
                 </div>
-                <h2 className="text-3xl font-black uppercase italic text-white">Configurações</h2>
+                <h2 className="text-3xl font-black uppercase italic text-white">Settings</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">Endereço Tezos</Label>
+                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">Tezos Address</Label>
                   <Input value={tezosAddress} onChange={(e) => setTezosAddress(e.target.value)} placeholder="tz1..." className="bg-black border-4 border-[#fff200] text-white rounded-none h-14 focus:ring-0 font-bold" disabled={isActive} />
                 </div>
                 <div className="space-y-3">
-                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">Handle Bluesky</Label>
+                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">Bluesky Handle</Label>
                   <Input value={blueskyHandle} onChange={(e) => setBlueskyHandle(e.target.value)} placeholder="user.bsky.social" className="bg-black border-4 border-[#fff200] text-white rounded-none h-14 focus:ring-0 font-bold" disabled={isActive} />
                 </div>
                 <div className="space-y-3 md:col-span-2">
@@ -266,12 +266,12 @@ export default function Home() {
                   <Input type="password" value={blueskyPassword} onChange={(e) => setBlueskyPassword(e.target.value)} placeholder="••••-••••-••••-••••" className="bg-black border-4 border-[#fff200] text-white rounded-none h-14 focus:ring-0 font-bold" disabled={isActive} />
                 </div>
                 <div className="space-y-3 md:col-span-2">
-                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">Link do Perfil</Label>
+                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">Profile Link (for posts)</Label>
                   <Input value={profileUrl} onChange={(e) => setProfileUrl(e.target.value)} placeholder="https://objkt.com/profile/..." className="bg-black border-4 border-[#fff200] text-white rounded-none h-14 focus:ring-0 font-bold" disabled={isActive} />
                 </div>
               </div>
               <Button onClick={handleSaveConfig} disabled={isActive} className="w-full mt-10 h-16 bg-[#fff200] text-black font-black text-xl border-4 border-black rounded-none shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all uppercase italic">
-                Salvar Configurações
+                Save Configuration
               </Button>
             </Card>
 
@@ -281,7 +281,7 @@ export default function Home() {
                 <div className="w-14 h-14 bg-white flex items-center justify-center border-4 border-black">
                   <Clock className="w-7 h-7 text-black" />
                 </div>
-                <h2 className="text-3xl font-black uppercase italic text-white">Horários</h2>
+                <h2 className="text-3xl font-black uppercase italic text-white">Schedules</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {schedules.map((s) => (
@@ -291,7 +291,7 @@ export default function Home() {
                       <Switch checked={s.enabled} onCheckedChange={(val) => updateScheduleField(s.id, 'enabled', val)} disabled={isActive} className="data-[state=checked]:bg-[#fff200]" />
                     </div>
                     <Input type="time" value={s.time} onChange={(e) => updateScheduleField(s.id, 'time', e.target.value)} disabled={!s.enabled || isActive} className="bg-black border-2 border-white text-white font-mono mb-4 rounded-none h-12" />
-                    <Input placeholder="Mensagem do post..." value={s.message || ''} onChange={(e) => updateScheduleField(s.id, 'message', e.target.value)} disabled={!s.enabled || isActive} className="bg-black border-2 border-white/40 text-white rounded-none" />
+                    <Input placeholder="Custom post message..." value={s.message || ''} onChange={(e) => updateScheduleField(s.id, 'message', e.target.value)} disabled={!s.enabled || isActive} className="bg-black border-2 border-white/40 text-white rounded-none" />
                   </div>
                 ))}
               </div>
@@ -301,13 +301,13 @@ export default function Home() {
           <div className="space-y-10">
             {/* Control Panel */}
             <Card className="p-8 border-4 border-[#fff200] bg-black shadow-[10px_10px_0px_0px_rgba(255,242,0,0.3)] rounded-none">
-              <h3 className="text-2xl font-black mb-6 uppercase italic text-[#fff200]">Status do Bot</h3>
+              <h3 className="text-2xl font-black mb-6 uppercase italic text-[#fff200]">Bot Status</h3>
               <Button 
                 onClick={handleActivateBot} 
                 disabled={!isConfigured || isLoading} 
                 className={`w-full h-24 text-2xl font-black border-4 border-black rounded-none transition-all uppercase italic ${isActive ? 'bg-red-600 text-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]' : 'bg-[#fff200] text-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]'} hover:shadow-none hover:translate-x-1 hover:translate-y-1`}
               >
-                {isLoading ? <Loader2 className="w-10 h-10 animate-spin" /> : isActive ? 'Desligar Bot' : 'Ligar Bot'}
+                {isLoading ? <Loader2 className="w-10 h-10 animate-spin" /> : isActive ? 'Deactivate Bot' : 'Activate Bot'}
               </Button>
               
               {isActive && (
@@ -315,9 +315,9 @@ export default function Home() {
                   <div className="p-6 bg-[#fff200]/10 border-4 border-[#fff200] rounded-none shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
                     <div className="flex items-center gap-2 mb-2">
                       <Calendar className="w-5 h-5 text-[#fff200]" />
-                      <span className="text-xs font-black text-[#fff200] uppercase tracking-widest">Próxima Postagem</span>
+                      <span className="text-xs font-black text-[#fff200] uppercase tracking-widest">Next Post</span>
                     </div>
-                    <p className="text-3xl font-black text-white italic">{nextPost || "Agendando..."}</p>
+                    <p className="text-3xl font-black text-white italic">{nextPost || "Scheduling..."}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-[#111] border-4 border-white/10 text-center">
@@ -325,7 +325,7 @@ export default function Home() {
                       <p className="text-3xl font-black text-[#fff200]">{totalPosts}</p>
                     </div>
                     <div className="p-4 bg-[#111] border-4 border-white/10 text-center">
-                      <p className="text-[10px] text-white/40 font-black uppercase mb-1 tracking-widest">Acervo</p>
+                      <p className="text-[10px] text-white/40 font-black uppercase mb-1 tracking-widest">Collection</p>
                       <p className="text-3xl font-black text-white">{artworks.length}</p>
                     </div>
                   </div>
@@ -333,20 +333,53 @@ export default function Home() {
               )}
             </Card>
 
+            {/* Social Section - FOLLOW ME */}
+            <Card className="p-8 border-4 border-[#fff200] bg-[#111] shadow-[10px_10px_0px_0px_rgba(255,242,0,0.2)] rounded-none overflow-hidden">
+              <div className="relative aspect-square border-4 border-[#fff200] mb-6 overflow-hidden">
+                <img src={SOCIAL_ART_URL} alt="Follow Me" className="w-full h-full object-cover" />
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-2xl font-black uppercase italic text-white tracking-tighter">Follow My Journey</h3>
+                <p className="text-white/60 text-sm font-bold leading-relaxed">
+                  Join me on Bluesky and Objkt to explore more of my digital creations and stay updated!
+                </p>
+                <div className="grid grid-cols-1 gap-3 pt-2">
+                  <a 
+                    href="https://bsky.app/profile/biglis-nft.bsky.social" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between bg-[#fff200] text-black p-4 border-2 border-black font-black uppercase text-xs hover:bg-white transition-all"
+                  >
+                    <span>Follow on Bluesky</span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                  <a 
+                    href="https://objkt.com/users/tz1RYMi13Yp4tmZ9ibt2yX9G7XC7qkEz31tg" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between bg-white text-black p-4 border-2 border-black font-black uppercase text-xs hover:bg-[#fff200] transition-all"
+                  >
+                    <span>View on Objkt</span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
+            </Card>
+
             {/* Gallery Preview */}
             {artworks.length > 0 && (
               <Card className="p-6 border-4 border-white bg-black shadow-[10px_10px_0px_0px_rgba(255,255,255,0.1)] rounded-none">
                 <div className="flex items-center gap-3 mb-6">
                   <ImageIcon className="w-6 h-6 text-[#fff200]" />
-                  <h3 className="text-xl font-black uppercase italic tracking-tighter">Visualização</h3>
+                  <h3 className="text-xl font-black uppercase italic tracking-tighter">Preview</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="grid grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {artworks.slice(0, 20).map((artwork) => (
                     <div key={artwork.id} className="relative aspect-square border-4 border-white/5 group overflow-hidden">
                       <img src={artwork.thumbnailUrl || artwork.imageUrl} alt={artwork.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" loading="lazy" />
                       <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center p-3 transition-all">
                         <Button size="sm" onClick={() => handleTestPost(artwork.id)} className="h-9 bg-[#fff200] text-black border-2 border-black rounded-none font-black text-[10px] w-full uppercase">
-                          POSTAR
+                          POST NOW
                         </Button>
                       </div>
                     </div>
