@@ -30,6 +30,7 @@ const DEFAULT_SCHEDULES: ScheduleTime[] = [
 ];
 
 const DONATION_ART_URL = "https://ipfs.io/ipfs/bafybeie2otqlyx5p5pqfew464h5rutibrvrnnpcxkw6yzdoi5w2zu2rqvi";
+const QR_CODE_ONLY_URL = "https://github.com/user-attachments/assets/4758e44e-c573-4546-9c9a-d5dd62ebbb7c";
 const TEZOS_WALLET_1 = "tz1RYMi13Yp4tmZ9ibt2yX9G7XC7qkEz31tg";
 
 export default function Home() {
@@ -170,12 +171,12 @@ export default function Home() {
           </Button>
           <div className="w-full max-w-2xl flex flex-col items-center gap-8">
             <h2 className="text-3xl font-black text-[#ff6b00] italic uppercase">QR Code Principal</h2>
-            {/* Focus on the left QR code using overflow and positioning */}
-            <div className="relative w-80 h-80 overflow-hidden border-8 border-[#ff6b00] bg-white shadow-[0_0_50px_rgba(255,107,0,0.5)]">
+            {/* Show the specific QR code image from README */}
+            <div className="relative w-80 h-80 border-8 border-[#ff6b00] bg-white shadow-[0_0_50px_rgba(255,107,0,0.5)]">
               <img 
-                src={DONATION_ART_URL} 
-                alt="Left QR Code Zoom" 
-                className="absolute w-[210%] max-w-none left-[-5%] bottom-[-5%]" 
+                src={QR_CODE_ONLY_URL} 
+                alt="QR Code" 
+                className="w-full h-full object-contain" 
               />
             </div>
             <p className="text-center text-white font-bold max-w-sm">Escanear o QR code acima para realizar sua doação via Tezos.</p>
