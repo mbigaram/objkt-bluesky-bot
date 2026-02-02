@@ -2,7 +2,8 @@
 
 Bot automatizado para postar suas artes NFT do [objkt.com](https://objkt.com) no [Bluesky](https://bsky.app) com agendamento personalizável.
 
-<img width="667" height="667" alt="image" src="https://github.com/user-attachments/assets/4758e44e-c573-4546-9c9a-d5dd62ebbb7c" />
+<img width="667" height="667" alt="image" src="https://github.com/user-attachments/assets/4758e44e-c573-4546-9c9a-d5dd62ebbb7c" /><img width="519" height="519" alt="image" src="https://github.com/user-attachments/assets/e6184885-3e67-4153-a5c8-b6ec01143fb6" />
+
 
 
 
