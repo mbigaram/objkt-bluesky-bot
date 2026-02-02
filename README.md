@@ -2,7 +2,8 @@
 
 Bot automatizado para postar suas artes NFT do [objkt.com](https://objkt.com) no [Bluesky](https://bsky.app) com agendamento personalizável.
 
-![Neo-Brutalism Design](https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=1200&h=400&fit=crop)
+![Neo-Brutalism Design](https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=1200&h=400&fit=crop)<img width="784" height="784" alt="image" src="https://github.com/user-attachments/assets/52d43ebc-cd27-4c96-b361-b2398f4c2f55" />
+
 
 
 ## ✨ Funcionalidades
