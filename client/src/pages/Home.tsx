@@ -9,9 +9,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
-import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, Trash2, Heart, Copy, Maximize2, X, ExternalLink } from "lucide-react";
+import { Clock, Image as ImageIcon, Calendar, Settings, Activity, Loader2, Trash2, Heart, Copy, Maximize2, X, ExternalLink, HelpCircle } from "lucide-react";
 import { ObjktBlueskyBot, BotConfig } from "@/lib/bot";
 import { ObjktArtwork } from "@/lib/objkt";
 
@@ -33,6 +34,34 @@ const DONATION_ART_URL = "https://ipfs.io/ipfs/bafybeie2otqlyx5p5pqfew464h5rutib
 const QR_CODE_ONLY_URL = "https://github.com/user-attachments/assets/4758e44e-c573-4546-9c9a-d5dd62ebbb7c";
 const SOCIAL_ART_URL = "https://github.com/user-attachments/assets/e6184885-3e67-4153-a5c8-b6ec01143fb6";
 const TEZOS_WALLET_1 = "tz1RYMi13Yp4tmZ9ibt2yX9G7XC7qkEz31tg";
+
+// Tooltip texts
+const TOOLTIPS = {
+  tezosAddress: "Your Tezos wallet address (tz1...) that contains your NFTs on objkt.com",
+  blueskyHandle: "Your complete Bluesky handle (e.g., user.bsky.social) - Do NOT include the @",
+  appPassword: "Generate a secure App Password in your Bluesky settings (Settings → App Passwords) instead of using your main password",
+  customMessage: "This message will appear in every post. Format: [Your Message] - [Art Name] - [Price] XTZ",
+  profileLink: "Optional: Link to your profile (e.g., https://objkt.com/profile/...)",
+  scheduleTime: "Set the time when the bot will automatically post your art",
+  scheduleMessage: "Optional: Custom message for this specific schedule slot"
+};
+
+// Helper component for label with tooltip
+const LabelWithTooltip = ({ label, tooltip }: { label: string; tooltip: string }) => (
+  <div className="flex items-center gap-2">
+    <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">{label}</Label>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button className="inline-flex items-center justify-center w-5 h-5 bg-[#fff200] text-black rounded-full hover:bg-white transition-colors">
+          <HelpCircle className="w-3 h-3" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="bg-black border-2 border-[#fff200] text-[#fff200] font-bold max-w-xs text-left">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
+  </div>
+);
 
 export default function Home() {
   const [tezosAddress, setTezosAddress] = useState("");
@@ -254,19 +283,23 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">Tezos Address</Label>
+                  <LabelWithTooltip label="Tezos Address" tooltip={TOOLTIPS.tezosAddress} />
                   <Input value={tezosAddress} onChange={(e) => setTezosAddress(e.target.value)} placeholder="tz1..." className="bg-black border-4 border-[#fff200] text-white rounded-none h-14 focus:ring-0 font-bold" disabled={isActive} />
                 </div>
                 <div className="space-y-3">
-                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">Bluesky Handle</Label>
+                  <LabelWithTooltip label="Bluesky Handle" tooltip={TOOLTIPS.blueskyHandle} />
                   <Input value={blueskyHandle} onChange={(e) => setBlueskyHandle(e.target.value)} placeholder="user.bsky.social" className="bg-black border-4 border-[#fff200] text-white rounded-none h-14 focus:ring-0 font-bold" disabled={isActive} />
                 </div>
                 <div className="space-y-3 md:col-span-2">
-                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">App Password</Label>
+                  <LabelWithTooltip label="App Password" tooltip={TOOLTIPS.appPassword} />
                   <Input type="password" value={blueskyPassword} onChange={(e) => setBlueskyPassword(e.target.value)} placeholder="••••-••••-••••-••••" className="bg-black border-4 border-[#fff200] text-white rounded-none h-14 focus:ring-0 font-bold" disabled={isActive} />
                 </div>
                 <div className="space-y-3 md:col-span-2">
-                  <Label className="text-[#fff200] font-black uppercase text-xs tracking-widest">Profile Link (for posts)</Label>
+                  <LabelWithTooltip label="Custom Message" tooltip={TOOLTIPS.customMessage} />
+                  <Input value={customMessage} onChange={(e) => setCustomMessage(e.target.value)} placeholder="Good morning! ☀️" className="bg-black border-4 border-[#fff200] text-white rounded-none h-14 focus:ring-0 font-bold" disabled={isActive} />
+                </div>
+                <div className="space-y-3 md:col-span-2">
+                  <LabelWithTooltip label="Profile Link (Optional)" tooltip={TOOLTIPS.profileLink} />
                   <Input value={profileUrl} onChange={(e) => setProfileUrl(e.target.value)} placeholder="https://objkt.com/profile/..." className="bg-black border-4 border-[#fff200] text-white rounded-none h-14 focus:ring-0 font-bold" disabled={isActive} />
                 </div>
               </div>
@@ -290,8 +323,14 @@ export default function Home() {
                       <span className="font-black text-white italic uppercase">Slot {s.id}</span>
                       <Switch checked={s.enabled} onCheckedChange={(val) => updateScheduleField(s.id, 'enabled', val)} disabled={isActive} className="data-[state=checked]:bg-[#fff200]" />
                     </div>
-                    <Input type="time" value={s.time} onChange={(e) => updateScheduleField(s.id, 'time', e.target.value)} disabled={!s.enabled || isActive} className="bg-black border-2 border-white text-white font-mono mb-4 rounded-none h-12" />
-                    <Input placeholder="Custom post message..." value={s.message || ''} onChange={(e) => updateScheduleField(s.id, 'message', e.target.value)} disabled={!s.enabled || isActive} className="bg-black border-2 border-white/40 text-white rounded-none" />
+                    <div className="space-y-3 mb-4">
+                      <LabelWithTooltip label="Time" tooltip={TOOLTIPS.scheduleTime} />
+                      <Input type="time" value={s.time} onChange={(e) => updateScheduleField(s.id, 'time', e.target.value)} disabled={!s.enabled || isActive} className="bg-black border-2 border-white text-white font-mono rounded-none h-12" />
+                    </div>
+                    <div className="space-y-3">
+                      <LabelWithTooltip label="Message (Optional)" tooltip={TOOLTIPS.scheduleMessage} />
+                      <Input placeholder="Custom post message..." value={s.message || ''} onChange={(e) => updateScheduleField(s.id, 'message', e.target.value)} disabled={!s.enabled || isActive} className="bg-black border-2 border-white/40 text-white rounded-none" />
+                    </div>
                   </div>
                 ))}
               </div>
