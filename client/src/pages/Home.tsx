@@ -123,15 +123,35 @@ export default function Home() {
     }
   }, [isActive]);
 
-  const handleSaveConfig = () => {
+  const handleSaveConfig = async () => {
     if (!tezosAddress || !blueskyHandle || !blueskyPassword) {
       toast.error("Please fill in all required fields");
       return;
     }
-    const config = { tezosAddress, blueskyHandle, blueskyPassword, customMessage, profileUrl, schedules };
+    const config = { tezosAddress, blueskyHandle, blueskyPassword, customMessage, profileUrl, schedules, isActive };
+    
+    // Save locally
     sessionStorage.setItem("botConfig", JSON.stringify(config));
     setIsConfigured(true);
-    toast.success("Settings saved!");
+
+    // Save to Vercel KV via API
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/save-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      
+      if (!response.ok) throw new Error('Failed to save to cloud');
+      
+      toast.success("Settings saved to cloud!");
+    } catch (error) {
+      console.error("Error saving to KV:", error);
+      toast.error("Saved locally, but failed to sync with cloud.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleClearData = () => {
@@ -155,26 +175,43 @@ export default function Home() {
   };
 
   const handleActivateBot = async () => {
+    const newActiveState = !isActive;
+    
     if (isActive) {
       botRef.current?.stop();
       botRef.current = null;
       setIsActive(false);
       setArtworks([]);
-      return;
+    } else {
+      setIsLoading(true);
+      try {
+        const config: BotConfig = { tezosAddress, blueskyHandle, blueskyPassword, customMessage, profileUrl, schedules };
+        const bot = new ObjktBlueskyBot(config);
+        await bot.start();
+        botRef.current = bot;
+        setIsActive(true);
+        setArtworks(bot.getArtworks());
+        toast.success("Bot started locally!");
+      } catch (error) {
+        toast.error(`Error: ${error instanceof Error ? error.message : "Failed to start"}`);
+        setIsLoading(false);
+        return;
+      } finally {
+        setIsLoading(false);
+      }
     }
-    setIsLoading(true);
+
+    // Sync active state with cloud
     try {
-      const config: BotConfig = { tezosAddress, blueskyHandle, blueskyPassword, customMessage, profileUrl, schedules };
-      const bot = new ObjktBlueskyBot(config);
-      await bot.start();
-      botRef.current = bot;
-      setIsActive(true);
-      setArtworks(bot.getArtworks());
-      toast.success("Bot started!");
+      const config = { tezosAddress, blueskyHandle, blueskyPassword, customMessage, profileUrl, schedules, isActive: newActiveState };
+      await fetch('/api/save-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      toast.success(newActiveState ? "Cloud bot activated!" : "Cloud bot deactivated!");
     } catch (error) {
-      toast.error(`Error: ${error instanceof Error ? error.message : "Failed to start"}`);
-    } finally {
-      setIsLoading(false);
+      toast.error("Failed to sync status with cloud.");
     }
   };
 
