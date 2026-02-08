@@ -2,6 +2,7 @@
  * Bot Configuration for Vercel Serverless Functions
  * This file handles the bot logic in a serverless environment
  */
+import sharp from 'sharp';
 
 export interface BotConfig {
   tezosAddress: string;
@@ -33,6 +34,7 @@ export interface BlueskySession {
 
 const OBJKT_GRAPHQL_ENDPOINT = "https://data.objkt.com/v3/graphql";
 const BLUESKY_API_URL = "https://bsky.social/xrpc";
+const MAX_IMAGE_SIZE_BYTES = 976.56 * 1024; // ~1MB limit for Bluesky blobs
 
 /**
  * Fetch user artworks from objkt.com
@@ -136,7 +138,7 @@ export async function fetchUserArtworks(tezosAddress: string): Promise<ObjktArtw
 }
 
 /**
- * Download artwork as blob
+ * Download artwork as buffer
  */
 export async function downloadArtwork(url: string): Promise<Buffer> {
   let fetchUrl = url;
@@ -156,6 +158,44 @@ export async function downloadArtwork(url: string): Promise<Buffer> {
   
   const arrayBuffer = await response.arrayBuffer();
   return Buffer.from(arrayBuffer);
+}
+
+/**
+ * Resize image if it exceeds Bluesky's limit
+ */
+async function processImage(buffer: Buffer): Promise<Buffer> {
+  if (buffer.length <= MAX_IMAGE_SIZE_BYTES) {
+    return buffer;
+  }
+
+  console.log(`Image size (${(buffer.length / 1024).toFixed(2)}KB) exceeds limit. Resizing...`);
+  
+  let quality = 90;
+  let resizedBuffer = buffer;
+  
+  // First attempt: just compress
+  resizedBuffer = await sharp(buffer)
+    .jpeg({ quality, force: false })
+    .png({ quality, force: false })
+    .toBuffer();
+
+  // If still too large, reduce dimensions and quality iteratively
+  let width = undefined;
+  while (resizedBuffer.length > MAX_IMAGE_SIZE_BYTES && quality > 10) {
+    quality -= 10;
+    const metadata = await sharp(buffer).metadata();
+    const currentWidth = metadata.width || 2000;
+    width = Math.floor(currentWidth * 0.8);
+    
+    resizedBuffer = await sharp(buffer)
+      .resize({ width })
+      .jpeg({ quality, force: false })
+      .png({ quality, force: false })
+      .toBuffer();
+  }
+
+  console.log(`Resized image to ${(resizedBuffer.length / 1024).toFixed(2)}KB`);
+  return resizedBuffer;
 }
 
 /**
@@ -273,7 +313,12 @@ export async function createPost(
   };
 
   if (buffer && mimeType) {
-    const blobData = await uploadBlob(session, buffer, mimeType);
+    let finalBuffer = buffer;
+    if (mimeType.startsWith("image/")) {
+      finalBuffer = await processImage(buffer);
+    }
+
+    const blobData = await uploadBlob(session, finalBuffer, mimeType);
     
     if (mimeType.startsWith("video/")) {
       record.embed = {
@@ -342,13 +387,14 @@ export async function postRandomArtwork(config: BotConfig): Promise<any> {
   let mediaMimeType: string | undefined;
   
   try {
-    const isVideo = artwork.mimeType === "video/mp4";
+    // Check if it's a video or image
+    const isVideo = artwork.mimeType.startsWith("video/");
     const primaryUrl = isVideo ? artwork.artifactUrl : artwork.imageUrl;
     const fallbackUrl = artwork.imageUrl || artwork.thumbnailUrl;
     
     try {
       mediaBuffer = await downloadArtwork(primaryUrl);
-      mediaMimeType = isVideo ? "video/mp4" : "image/png";
+      mediaMimeType = artwork.mimeType;
     } catch (e) {
       console.warn(`Failed to download primary media, trying fallback...`);
       if (fallbackUrl && fallbackUrl !== primaryUrl) {
@@ -404,13 +450,13 @@ export async function postSpecificArtwork(config: BotConfig, artworkId: string):
   let mediaMimeType: string | undefined;
   
   try {
-    const isVideo = artwork.mimeType === "video/mp4";
+    const isVideo = artwork.mimeType.startsWith("video/");
     const primaryUrl = isVideo ? artwork.artifactUrl : artwork.imageUrl;
     const fallbackUrl = artwork.imageUrl || artwork.thumbnailUrl;
     
     try {
       mediaBuffer = await downloadArtwork(primaryUrl);
-      mediaMimeType = isVideo ? "video/mp4" : "image/png";
+      mediaMimeType = artwork.mimeType;
     } catch (e) {
       console.warn(`Failed to download primary media, trying fallback...`);
       if (fallbackUrl && fallbackUrl !== primaryUrl) {
