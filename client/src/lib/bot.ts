@@ -165,9 +165,30 @@ export class ObjktBlueskyBot {
    * Manually post an artwork
    */
   async postArtwork(artworkId: string): Promise<void> {
-    if (!this.session) throw new Error("Not authenticated");
-    const artwork = this.artworks.find(a => a.id === artworkId);
-    if (!artwork) throw new Error("Artwork not found");
+    console.log("Bot: Manual post requested for ID:", artworkId);
+    
+    // Ensure we have artworks loaded
+    if (this.artworks.length === 0) {
+      console.log("Bot: No artworks loaded, fetching now...");
+      this.artworks = await fetchUserArtworks(this.config.tezosAddress);
+    }
+
+    const artwork = this.artworks.find(a => String(a.id) === String(artworkId));
+    
+    if (!artwork) {
+      console.error("Bot: Artwork not found in collection. Available IDs:", this.artworks.map(a => a.id));
+      throw new Error(`Artwork with ID ${artworkId} not found in your collection`);
+    }
+
+    console.log("Bot: Found artwork to post:", artwork.name);
+    
+    if (!this.session) {
+      console.log("Bot: No session found, authenticating...");
+      this.session = await createBlueskySession(
+        this.config.blueskyHandle,
+        this.config.blueskyPassword
+      );
+    }
 
     await this.executePost(artwork, this.config.customMessage);
   }
