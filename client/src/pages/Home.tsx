@@ -219,39 +219,55 @@ export default function Home() {
     console.log("Post Now clicked for artworkId:", artworkId);
     setIsLoading(true);
     
-    // 1. Try to post locally if bot is active
-    let localSuccess = false;
-    if (botRef.current) {
-      try {
-        console.log("Attempting local post via botRef...");
-        await botRef.current.postArtwork(artworkId);
-        localSuccess = true;
-        toast.success("Post sent from browser!");
-      } catch (error) {
-        console.error("Local post failed:", error);
+    // 1. If running locally (localhost), we ONLY use the local bot to avoid double posts and API errors
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    if (isLocal) {
+      if (botRef.current) {
+        try {
+          console.log("Local environment detected. Posting via browser bot...");
+          await botRef.current.postArtwork(artworkId);
+          toast.success("Post sent successfully!");
+        } catch (error) {
+          console.error("Local post failed:", error);
+          toast.error(`Failed to post: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+          setIsLoading(false);
+        }
+        return; // Stop here for local tests
+      } else {
+        toast.error("Please activate the bot first!");
+        setIsLoading(false);
+        return;
       }
     }
 
-    // 2. Also trigger cloud post to ensure it works 24h
+    // 2. If on Vercel, we use the API
     try {
-      console.log("Attempting cloud post via /api/post-specific...");
+      console.log("Vercel environment detected. Posting via API...");
       const response = await fetch('/api/post-specific', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ artworkId }),
       });
       
-      const result = await response.json();
-      console.log("Cloud post response:", result);
+      // Safe JSON parsing to avoid "Unexpected end of JSON input"
+      const text = await response.text();
+      let result;
+      try {
+        result = text ? JSON.parse(text) : {};
+      } catch (e) {
+        result = { error: 'Invalid response from server' };
+      }
 
       if (response.ok) {
-        if (!localSuccess) toast.success("Post sent from cloud!");
+        toast.success("Post sent from cloud!");
       } else {
-        if (!localSuccess) throw new Error(result.error || 'Cloud post failed');
+        throw new Error(result.error || 'Cloud post failed');
       }
     } catch (error) {
       console.error("Cloud post failed:", error);
-      if (!localSuccess) toast.error(`Failed to post: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to post: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }

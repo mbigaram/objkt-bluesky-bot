@@ -155,9 +155,11 @@ export class ObjktBlueskyBot {
     if (!this.session) throw new Error("Not authenticated");
     if (this.artworks.length === 0) throw new Error("No artworks available");
 
+    // Random selection ONLY for scheduled posts
     const randomIndex = Math.floor(Math.random() * this.artworks.length);
     const artwork = this.artworks[randomIndex];
     
+    console.log("Bot: Scheduled post selecting random artwork:", artwork.name);
     await this.executePost(artwork, schedule?.message || this.config.customMessage);
   }
 
@@ -165,40 +167,31 @@ export class ObjktBlueskyBot {
    * Manually post an artwork
    */
   async postArtwork(artworkId: string): Promise<void> {
-    console.log("Bot: Manual post requested for ID:", artworkId);
+    const targetId = String(artworkId).trim();
+    console.log("Bot: MANUAL POST START for ID:", targetId);
     
-    // 1. Ensure we have artworks loaded
     if (!this.artworks || this.artworks.length === 0) {
-      console.log("Bot: No artworks in memory, fetching from API...");
       this.artworks = await fetchUserArtworks(this.config.tezosAddress);
     }
 
-    // 2. Find the EXACT artwork
-    // We use String() to avoid type mismatch and trim to avoid whitespace issues
-    const targetId = String(artworkId).trim();
     const artwork = this.artworks.find(a => String(a.id).trim() === targetId);
     
     if (!artwork) {
-      console.error("Bot: CRITICAL - Artwork not found! Requested ID:", targetId);
-      console.log("Bot: Available IDs in memory:", this.artworks.map(a => a.id).slice(0, 10), "...");
-      throw new Error(`Artwork not found. Please try refreshing the collection.`);
+      throw new Error(`Artwork ${targetId} not found in collection.`);
     }
 
-    console.log("Bot: SUCCESS - Found artwork to post:", artwork.name, "(ID:", artwork.id, ")");
+    console.log("Bot: MANUAL POST CONFIRMED for:", artwork.name);
     
-    // 3. Ensure session is active
     if (!this.session) {
-      console.log("Bot: No session, authenticating...");
       this.session = await createBlueskySession(
         this.config.blueskyHandle,
         this.config.blueskyPassword
       );
     }
 
-    // 4. Execute the post with the SPECIFIC artwork
-    // We call executePost directly with the found artwork object
+    // IMPORTANT: We pass the specific artwork object to executePost
     await this.executePost(artwork, this.config.customMessage);
-    console.log("Bot: Manual post execution finished for:", artwork.name);
+    console.log("Bot: MANUAL POST COMPLETED for:", artwork.name);
   }
 
   /**
