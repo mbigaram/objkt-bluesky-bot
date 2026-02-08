@@ -7,7 +7,7 @@
   "crons": [
     {
       "path": "/api/post",
-      "schedule": "* * * * *"
+      "schedule": "0 5 * * *"
     }
   ],
   "env": {
