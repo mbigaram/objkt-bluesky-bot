@@ -379,3 +379,65 @@ export async function postRandomArtwork(config: BotConfig): Promise<any> {
     post: result,
   };
 }
+
+/**
+ * Post a specific artwork by ID
+ */
+export async function postSpecificArtwork(config: BotConfig, artworkId: string): Promise<any> {
+  // Authenticate with Bluesky
+  const session = await createBlueskySession(config.blueskyHandle, config.blueskyPassword);
+  
+  // Fetch artworks to find the specific one
+  const artworks = await fetchUserArtworks(config.tezosAddress);
+  const artwork = artworks.find(a => a.id === artworkId);
+  
+  if (!artwork) {
+    throw new Error(`Artwork with ID ${artworkId} not found`);
+  }
+  
+  // Build post text
+  const profileLink = config.profileUrl.startsWith('http') ? config.profileUrl : `https://${config.profileUrl}`;
+  const postText = `${config.customMessage}\n\n${artwork.name}\n${artwork.price} XTZ\n\n🔗 ${profileLink}`;
+  
+  // Download media
+  let mediaBuffer: Buffer | undefined;
+  let mediaMimeType: string | undefined;
+  
+  try {
+    const isVideo = artwork.mimeType === "video/mp4";
+    const primaryUrl = isVideo ? artwork.artifactUrl : artwork.imageUrl;
+    const fallbackUrl = artwork.imageUrl || artwork.thumbnailUrl;
+    
+    try {
+      mediaBuffer = await downloadArtwork(primaryUrl);
+      mediaMimeType = isVideo ? "video/mp4" : "image/png";
+    } catch (e) {
+      console.warn(`Failed to download primary media, trying fallback...`);
+      if (fallbackUrl && fallbackUrl !== primaryUrl) {
+        mediaBuffer = await downloadArtwork(fallbackUrl);
+        mediaMimeType = "image/png";
+      }
+    }
+  } catch (error) {
+    console.warn("Could not download any media, posting text only", error);
+  }
+  
+  // Create post
+  const result = await createPost(
+    session,
+    postText,
+    mediaBuffer,
+    mediaMimeType,
+    artwork.description || artwork.name
+  );
+  
+  return {
+    success: true,
+    artwork: {
+      id: artwork.id,
+      name: artwork.name,
+      price: artwork.price,
+    },
+    post: result,
+  };
+}

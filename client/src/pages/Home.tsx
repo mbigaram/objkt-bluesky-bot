@@ -216,13 +216,37 @@ export default function Home() {
   };
 
   const handleTestPost = async (artworkId: string) => {
-    if (!botRef.current) return;
     setIsLoading(true);
+    
+    // 1. Try to post locally if bot is active
+    let localSuccess = false;
+    if (botRef.current) {
+      try {
+        await botRef.current.postArtwork(artworkId);
+        localSuccess = true;
+        toast.success("Post sent from browser!");
+      } catch (error) {
+        console.error("Local post failed:", error);
+      }
+    }
+
+    // 2. Also trigger cloud post to ensure it works 24h
     try {
-      await botRef.current.postArtwork(artworkId);
-      toast.success("Test post sent!");
+      const response = await fetch('/api/post-specific', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artworkId }),
+      });
+      
+      if (response.ok) {
+        if (!localSuccess) toast.success("Post sent from cloud!");
+      } else {
+        const err = await response.json();
+        if (!localSuccess) throw new Error(err.error || 'Cloud post failed');
+      }
     } catch (error) {
-      toast.error("Error in test post");
+      console.error("Cloud post failed:", error);
+      if (!localSuccess) toast.error(`Failed to post: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
