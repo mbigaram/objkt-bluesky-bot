@@ -216,12 +216,14 @@ export default function Home() {
   };
 
   const handleTestPost = async (artworkId: string) => {
+    console.log("Post Now clicked for artworkId:", artworkId);
     setIsLoading(true);
     
     // 1. Try to post locally if bot is active
     let localSuccess = false;
     if (botRef.current) {
       try {
+        console.log("Attempting local post via botRef...");
         await botRef.current.postArtwork(artworkId);
         localSuccess = true;
         toast.success("Post sent from browser!");
@@ -232,17 +234,20 @@ export default function Home() {
 
     // 2. Also trigger cloud post to ensure it works 24h
     try {
+      console.log("Attempting cloud post via /api/post-specific...");
       const response = await fetch('/api/post-specific', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ artworkId }),
       });
       
+      const result = await response.json();
+      console.log("Cloud post response:", result);
+
       if (response.ok) {
         if (!localSuccess) toast.success("Post sent from cloud!");
       } else {
-        const err = await response.json();
-        if (!localSuccess) throw new Error(err.error || 'Cloud post failed');
+        if (!localSuccess) throw new Error(result.error || 'Cloud post failed');
       }
     } catch (error) {
       console.error("Cloud post failed:", error);
